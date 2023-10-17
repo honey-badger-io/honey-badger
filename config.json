@@ -1,0 +1,15 @@
+{
+    "Badger": {
+        "DataDirPath": "./data",
+        "GCPeriodMin": 60
+    },
+    "Server": {
+        "Port": 18950,
+        "MaxRecvMsgSizeMb": 100
+    },
+    "Logger": {
+        "Sinks": {
+            "console": true
+        }
+    }
+}

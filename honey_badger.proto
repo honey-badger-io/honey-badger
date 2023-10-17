@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+option go_package = "github.com/honey-badger-io/honey-badger/pb";
+
+package hb;
+
+service Data {
+    rpc Set(SetRequest) returns (EmptyResult) {}
+    rpc Get(KeyRequest) returns (GetResult) {}
+    rpc Delete(KeyRequest) returns (EmptyResult) {}
+    rpc DeleteByPrefix(PrefixRequest) returns (EmptyResult) {}
+    rpc CreateReadStream(ReadStreamReq) returns (stream DataItem) {}
+    rpc CreateSendStream(stream SendStreamReq) returns (EmptyResult) {}
+}
+
+service Db {
+    rpc Create(CreateDbRequest) returns (EmptyResult) {}
+    rpc Drop(DropDbRequest) returns (EmptyResult) {}
+}
+
+service Sys {
+    rpc Ping(PingRequest) returns (PingResult) {}
+}
+
+message SetRequest {
+    string db = 1;
+    string key = 2;
+    bytes data = 3;
+    optional int32 ttl = 4;
+}
+
+message KeyRequest {
+    string db = 1;
+    string key = 2;
+}
+
+message GetResult {
+    bool hit = 1;
+    bytes data = 2;
+}
+
+message PrefixRequest {
+    string db = 1;
+    string prefix = 2;
+}
+
+message CreateDbRequest {
+    string name = 1;
+    bool inMemory = 2;
+}
+
+message DropDbRequest {
+    string name = 1;
+}
+
+message PingRequest {}
+
+message PingResult {
+    string mesage = 1;
+}
+
+message EmptyResult {}
+
+message ReadStreamReq {
+    string db = 1;
+    optional string prefix = 2;
+}
+
+message SendStreamReq {
+    DataItem item = 1;
+    string db = 2;
+}
+
+message DataItem {
+    string key = 1;
+    bytes data = 2;
+}
