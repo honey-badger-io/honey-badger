@@ -358,6 +358,7 @@ var Data_ServiceDesc = grpc.ServiceDesc{
 const (
 	Db_Create_FullMethodName = "/hb.Db/Create"
 	Db_Drop_FullMethodName   = "/hb.Db/Drop"
+	Db_Exists_FullMethodName = "/hb.Db/Exists"
 )
 
 // DbClient is the client API for Db service.
@@ -366,6 +367,7 @@ const (
 type DbClient interface {
 	Create(ctx context.Context, in *CreateDbRequest, opts ...grpc.CallOption) (*EmptyResult, error)
 	Drop(ctx context.Context, in *DropDbRequest, opts ...grpc.CallOption) (*EmptyResult, error)
+	Exists(ctx context.Context, in *ExistsDbReq, opts ...grpc.CallOption) (*ExistsDbRes, error)
 }
 
 type dbClient struct {
@@ -394,12 +396,22 @@ func (c *dbClient) Drop(ctx context.Context, in *DropDbRequest, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *dbClient) Exists(ctx context.Context, in *ExistsDbReq, opts ...grpc.CallOption) (*ExistsDbRes, error) {
+	out := new(ExistsDbRes)
+	err := c.cc.Invoke(ctx, Db_Exists_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DbServer is the server API for Db service.
 // All implementations must embed UnimplementedDbServer
 // for forward compatibility
 type DbServer interface {
 	Create(context.Context, *CreateDbRequest) (*EmptyResult, error)
 	Drop(context.Context, *DropDbRequest) (*EmptyResult, error)
+	Exists(context.Context, *ExistsDbReq) (*ExistsDbRes, error)
 	mustEmbedUnimplementedDbServer()
 }
 
@@ -412,6 +424,9 @@ func (UnimplementedDbServer) Create(context.Context, *CreateDbRequest) (*EmptyRe
 }
 func (UnimplementedDbServer) Drop(context.Context, *DropDbRequest) (*EmptyResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Drop not implemented")
+}
+func (UnimplementedDbServer) Exists(context.Context, *ExistsDbReq) (*ExistsDbRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Exists not implemented")
 }
 func (UnimplementedDbServer) mustEmbedUnimplementedDbServer() {}
 
@@ -462,6 +477,24 @@ func _Db_Drop_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Db_Exists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExistsDbReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DbServer).Exists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Db_Exists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DbServer).Exists(ctx, req.(*ExistsDbReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Db_ServiceDesc is the grpc.ServiceDesc for Db service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -476,6 +509,10 @@ var Db_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Drop",
 			Handler:    _Db_Drop_Handler,
+		},
+		{
+			MethodName: "Exists",
+			Handler:    _Db_Exists_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

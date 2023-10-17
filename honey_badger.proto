@@ -16,6 +16,7 @@ service Data {
 service Db {
     rpc Create(CreateDbRequest) returns (EmptyResult) {}
     rpc Drop(DropDbRequest) returns (EmptyResult) {}
+    rpc Exists(ExistsDbReq) returns (ExistsDbRes) {}
 }
 
 service Sys {
@@ -74,4 +75,12 @@ message SendStreamReq {
 message DataItem {
     string key = 1;
     bytes data = 2;
+}
+
+message ExistsDbReq {
+    string name = 1;
+}
+
+message ExistsDbRes {
+    bool exists = 1;
 }

@@ -29,3 +29,9 @@ func (s *DbServer) Drop(ctx context.Context, in *pb.DropDbRequest) (*pb.EmptyRes
 
 	return &pb.EmptyResult{}, nil
 }
+
+func (s *DbServer) Exists(ctx context.Context, in *pb.ExistsDbReq) (*pb.ExistsDbRes, error) {
+	return &pb.ExistsDbRes{
+		Exists: s.dbCtx.Exists(in.Name),
+	}, nil
+}

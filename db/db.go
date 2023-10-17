@@ -47,6 +47,7 @@ func (ctx *DbContext) LoadDbs() error {
 		opt := badger.DefaultOptions(dbPath).
 			WithLogger(logger.Badger())
 
+		ctx.logger.Infof("Loading '%s'", name)
 		b, err := badger.Open(opt)
 		if err != nil {
 			return err
@@ -67,11 +68,7 @@ func (ctx *DbContext) LoadDbs() error {
 func (ctx *DbContext) GetDb(name string) (*Database, error) {
 	db := ctx.dbs[name]
 	if db == nil {
-		_, err := ctx.CreateDb(name, true)
-
-		if err != nil {
-			return nil, err
-		}
+		return nil, errors.New("db does not exists")
 	}
 
 	return ctx.dbs[name], nil
@@ -102,6 +99,8 @@ func (ctx *DbContext) DropDb(name string) error {
 	}
 
 	delete(ctx.dbs, name)
+
+	ctx.logger.Infof("Dropped '%s'", name)
 
 	return nil
 }
@@ -154,6 +153,10 @@ func (ctx *DbContext) Close() {
 			ctx.logger.Error(err)
 		}
 	}
+}
+
+func (ctx *DbContext) Exists(name string) bool {
+	return ctx.dbs[name] != nil
 }
 
 func startGCRoutine(ctx *DbContext) {
