@@ -164,10 +164,15 @@ func startGCRoutine(ctx *DbContext) {
 	go func() {
 		for range ctx.gcTicker.C {
 			for name, itm := range ctx.dbs {
+				// Do not run GC on in memory databases
+				if itm.b.Opts().InMemory {
+					continue
+				}
+
 				ctx.logger.Infof("Running GC on database '%s'...", name)
-				err := itm.b.RunValueLogGC(0.7)
+				err := itm.b.RunValueLogGC(0.5)
 				if err != nil {
-					ctx.logger.Error(err)
+					ctx.logger.Warning(err)
 				}
 			}
 		}

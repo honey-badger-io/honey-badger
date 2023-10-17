@@ -3,10 +3,9 @@ dev:
 
 build:
 	go build -o ./bin/hb -ldflags "-X main.version=$(ver)" .
-	cp ./config.json ./bin/config.json
 
 run: build
-	./bin/hb
+	./bin/hb -config config.json
 
 proto:
 	protoc --go_out=./pb --go_opt=paths=source_relative --go-grpc_out=./pb --go-grpc_opt=paths=source_relative honey_badger.proto

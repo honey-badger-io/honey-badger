@@ -94,7 +94,13 @@ func (l *Logger) Error(err error) {
 	l.logMsg("ERROR", err.Error())
 }
 
-func (l *Logger) Warningf(string, ...interface{}) {}
+func (l *Logger) Warning(err error) {
+	l.logMsg("WARN", err.Error())
+}
+
+func (l *Logger) Warningf(format string, v ...interface{}) {
+	l.logMsg("WARN", format, v...)
+}
 
 func (l *Logger) Infof(format string, v ...interface{}) {
 	l.logMsg("INFO", format, v...)
