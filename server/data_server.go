@@ -7,6 +7,7 @@ import (
 
 	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/pb"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type DataServer struct {
@@ -15,7 +16,7 @@ type DataServer struct {
 	dbCtx *db.DbContext
 }
 
-func (s *DataServer) Set(ctx context.Context, in *pb.SetRequest) (*pb.EmptyResult, error) {
+func (s *DataServer) Set(ctx context.Context, in *pb.SetRequest) (*emptypb.Empty, error) {
 	db, err := s.dbCtx.GetDb(in.Db)
 	if err != nil {
 		return nil, err
@@ -31,7 +32,7 @@ func (s *DataServer) Set(ctx context.Context, in *pb.SetRequest) (*pb.EmptyResul
 		return nil, err
 	}
 
-	return &pb.EmptyResult{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *DataServer) Get(ctx context.Context, in *pb.KeyRequest) (*pb.GetResult, error) {
@@ -48,7 +49,7 @@ func (s *DataServer) Get(ctx context.Context, in *pb.KeyRequest) (*pb.GetResult,
 	return &pb.GetResult{Data: data, Hit: hit}, nil
 }
 
-func (s *DataServer) Delete(ctx context.Context, in *pb.KeyRequest) (*pb.EmptyResult, error) {
+func (s *DataServer) Delete(ctx context.Context, in *pb.KeyRequest) (*emptypb.Empty, error) {
 	db, err := s.dbCtx.GetDb(in.Db)
 	if err != nil {
 		return nil, err
@@ -58,10 +59,10 @@ func (s *DataServer) Delete(ctx context.Context, in *pb.KeyRequest) (*pb.EmptyRe
 		return nil, err
 	}
 
-	return &pb.EmptyResult{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *DataServer) DeleteByPrefix(ctx context.Context, in *pb.PrefixRequest) (*pb.EmptyResult, error) {
+func (s *DataServer) DeleteByPrefix(ctx context.Context, in *pb.PrefixRequest) (*emptypb.Empty, error) {
 	db, err := s.dbCtx.GetDb(in.Db)
 	if err != nil {
 		return nil, err
@@ -71,7 +72,7 @@ func (s *DataServer) DeleteByPrefix(ctx context.Context, in *pb.PrefixRequest) (
 		return nil, err
 	}
 
-	return &pb.EmptyResult{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *DataServer) CreateReadStream(in *pb.ReadStreamReq, stream pb.Data_CreateReadStreamServer) error {
@@ -123,5 +124,5 @@ func (s *DataServer) CreateSendStream(stream pb.Data_CreateSendStreamServer) err
 		return err
 	}
 
-	return stream.SendAndClose(&pb.EmptyResult{})
+	return stream.SendAndClose(&emptypb.Empty{})
 }

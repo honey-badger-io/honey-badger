@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -31,10 +32,10 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DataClient interface {
-	Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*EmptyResult, error)
+	Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Get(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*GetResult, error)
-	Delete(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*EmptyResult, error)
-	DeleteByPrefix(ctx context.Context, in *PrefixRequest, opts ...grpc.CallOption) (*EmptyResult, error)
+	Delete(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteByPrefix(ctx context.Context, in *PrefixRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	CreateReadStream(ctx context.Context, in *ReadStreamReq, opts ...grpc.CallOption) (Data_CreateReadStreamClient, error)
 	CreateSendStream(ctx context.Context, opts ...grpc.CallOption) (Data_CreateSendStreamClient, error)
 }
@@ -47,8 +48,8 @@ func NewDataClient(cc grpc.ClientConnInterface) DataClient {
 	return &dataClient{cc}
 }
 
-func (c *dataClient) Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*EmptyResult, error) {
-	out := new(EmptyResult)
+func (c *dataClient) Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Data_Set_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -65,8 +66,8 @@ func (c *dataClient) Get(ctx context.Context, in *KeyRequest, opts ...grpc.CallO
 	return out, nil
 }
 
-func (c *dataClient) Delete(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*EmptyResult, error) {
-	out := new(EmptyResult)
+func (c *dataClient) Delete(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Data_Delete_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -74,8 +75,8 @@ func (c *dataClient) Delete(ctx context.Context, in *KeyRequest, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *dataClient) DeleteByPrefix(ctx context.Context, in *PrefixRequest, opts ...grpc.CallOption) (*EmptyResult, error) {
-	out := new(EmptyResult)
+func (c *dataClient) DeleteByPrefix(ctx context.Context, in *PrefixRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Data_DeleteByPrefix_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -126,7 +127,7 @@ func (c *dataClient) CreateSendStream(ctx context.Context, opts ...grpc.CallOpti
 
 type Data_CreateSendStreamClient interface {
 	Send(*SendStreamReq) error
-	CloseAndRecv() (*EmptyResult, error)
+	CloseAndRecv() (*emptypb.Empty, error)
 	grpc.ClientStream
 }
 
@@ -138,11 +139,11 @@ func (x *dataCreateSendStreamClient) Send(m *SendStreamReq) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *dataCreateSendStreamClient) CloseAndRecv() (*EmptyResult, error) {
+func (x *dataCreateSendStreamClient) CloseAndRecv() (*emptypb.Empty, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
-	m := new(EmptyResult)
+	m := new(emptypb.Empty)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -153,10 +154,10 @@ func (x *dataCreateSendStreamClient) CloseAndRecv() (*EmptyResult, error) {
 // All implementations must embed UnimplementedDataServer
 // for forward compatibility
 type DataServer interface {
-	Set(context.Context, *SetRequest) (*EmptyResult, error)
+	Set(context.Context, *SetRequest) (*emptypb.Empty, error)
 	Get(context.Context, *KeyRequest) (*GetResult, error)
-	Delete(context.Context, *KeyRequest) (*EmptyResult, error)
-	DeleteByPrefix(context.Context, *PrefixRequest) (*EmptyResult, error)
+	Delete(context.Context, *KeyRequest) (*emptypb.Empty, error)
+	DeleteByPrefix(context.Context, *PrefixRequest) (*emptypb.Empty, error)
 	CreateReadStream(*ReadStreamReq, Data_CreateReadStreamServer) error
 	CreateSendStream(Data_CreateSendStreamServer) error
 	mustEmbedUnimplementedDataServer()
@@ -166,16 +167,16 @@ type DataServer interface {
 type UnimplementedDataServer struct {
 }
 
-func (UnimplementedDataServer) Set(context.Context, *SetRequest) (*EmptyResult, error) {
+func (UnimplementedDataServer) Set(context.Context, *SetRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Set not implemented")
 }
 func (UnimplementedDataServer) Get(context.Context, *KeyRequest) (*GetResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedDataServer) Delete(context.Context, *KeyRequest) (*EmptyResult, error) {
+func (UnimplementedDataServer) Delete(context.Context, *KeyRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedDataServer) DeleteByPrefix(context.Context, *PrefixRequest) (*EmptyResult, error) {
+func (UnimplementedDataServer) DeleteByPrefix(context.Context, *PrefixRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteByPrefix not implemented")
 }
 func (UnimplementedDataServer) CreateReadStream(*ReadStreamReq, Data_CreateReadStreamServer) error {
@@ -295,7 +296,7 @@ func _Data_CreateSendStream_Handler(srv interface{}, stream grpc.ServerStream) e
 }
 
 type Data_CreateSendStreamServer interface {
-	SendAndClose(*EmptyResult) error
+	SendAndClose(*emptypb.Empty) error
 	Recv() (*SendStreamReq, error)
 	grpc.ServerStream
 }
@@ -304,7 +305,7 @@ type dataCreateSendStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *dataCreateSendStreamServer) SendAndClose(m *EmptyResult) error {
+func (x *dataCreateSendStreamServer) SendAndClose(m *emptypb.Empty) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -356,16 +357,20 @@ var Data_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	Db_Create_FullMethodName = "/hb.Db/Create"
-	Db_Drop_FullMethodName   = "/hb.Db/Drop"
+	Db_Create_FullMethodName   = "/hb.Db/Create"
+	Db_Drop_FullMethodName     = "/hb.Db/Drop"
+	Db_Exists_FullMethodName   = "/hb.Db/Exists"
+	Db_EnsureDb_FullMethodName = "/hb.Db/EnsureDb"
 )
 
 // DbClient is the client API for Db service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DbClient interface {
-	Create(ctx context.Context, in *CreateDbRequest, opts ...grpc.CallOption) (*EmptyResult, error)
-	Drop(ctx context.Context, in *DropDbRequest, opts ...grpc.CallOption) (*EmptyResult, error)
+	Create(ctx context.Context, in *CreateDbReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Drop(ctx context.Context, in *DropDbRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Exists(ctx context.Context, in *ExistsDbReq, opts ...grpc.CallOption) (*ExistsDbRes, error)
+	EnsureDb(ctx context.Context, in *CreateDbReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type dbClient struct {
@@ -376,8 +381,8 @@ func NewDbClient(cc grpc.ClientConnInterface) DbClient {
 	return &dbClient{cc}
 }
 
-func (c *dbClient) Create(ctx context.Context, in *CreateDbRequest, opts ...grpc.CallOption) (*EmptyResult, error) {
-	out := new(EmptyResult)
+func (c *dbClient) Create(ctx context.Context, in *CreateDbReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Db_Create_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -385,9 +390,27 @@ func (c *dbClient) Create(ctx context.Context, in *CreateDbRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *dbClient) Drop(ctx context.Context, in *DropDbRequest, opts ...grpc.CallOption) (*EmptyResult, error) {
-	out := new(EmptyResult)
+func (c *dbClient) Drop(ctx context.Context, in *DropDbRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Db_Drop_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dbClient) Exists(ctx context.Context, in *ExistsDbReq, opts ...grpc.CallOption) (*ExistsDbRes, error) {
+	out := new(ExistsDbRes)
+	err := c.cc.Invoke(ctx, Db_Exists_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dbClient) EnsureDb(ctx context.Context, in *CreateDbReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Db_EnsureDb_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -398,8 +421,10 @@ func (c *dbClient) Drop(ctx context.Context, in *DropDbRequest, opts ...grpc.Cal
 // All implementations must embed UnimplementedDbServer
 // for forward compatibility
 type DbServer interface {
-	Create(context.Context, *CreateDbRequest) (*EmptyResult, error)
-	Drop(context.Context, *DropDbRequest) (*EmptyResult, error)
+	Create(context.Context, *CreateDbReq) (*emptypb.Empty, error)
+	Drop(context.Context, *DropDbRequest) (*emptypb.Empty, error)
+	Exists(context.Context, *ExistsDbReq) (*ExistsDbRes, error)
+	EnsureDb(context.Context, *CreateDbReq) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDbServer()
 }
 
@@ -407,11 +432,17 @@ type DbServer interface {
 type UnimplementedDbServer struct {
 }
 
-func (UnimplementedDbServer) Create(context.Context, *CreateDbRequest) (*EmptyResult, error) {
+func (UnimplementedDbServer) Create(context.Context, *CreateDbReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedDbServer) Drop(context.Context, *DropDbRequest) (*EmptyResult, error) {
+func (UnimplementedDbServer) Drop(context.Context, *DropDbRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Drop not implemented")
+}
+func (UnimplementedDbServer) Exists(context.Context, *ExistsDbReq) (*ExistsDbRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Exists not implemented")
+}
+func (UnimplementedDbServer) EnsureDb(context.Context, *CreateDbReq) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnsureDb not implemented")
 }
 func (UnimplementedDbServer) mustEmbedUnimplementedDbServer() {}
 
@@ -427,7 +458,7 @@ func RegisterDbServer(s grpc.ServiceRegistrar, srv DbServer) {
 }
 
 func _Db_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateDbRequest)
+	in := new(CreateDbReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -439,7 +470,7 @@ func _Db_Create_Handler(srv interface{}, ctx context.Context, dec func(interface
 		FullMethod: Db_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DbServer).Create(ctx, req.(*CreateDbRequest))
+		return srv.(DbServer).Create(ctx, req.(*CreateDbReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -462,6 +493,42 @@ func _Db_Drop_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Db_Exists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExistsDbReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DbServer).Exists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Db_Exists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DbServer).Exists(ctx, req.(*ExistsDbReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Db_EnsureDb_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDbReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DbServer).EnsureDb(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Db_EnsureDb_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DbServer).EnsureDb(ctx, req.(*CreateDbReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Db_ServiceDesc is the grpc.ServiceDesc for Db service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -476,6 +543,14 @@ var Db_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Drop",
 			Handler:    _Db_Drop_Handler,
+		},
+		{
+			MethodName: "Exists",
+			Handler:    _Db_Exists_Handler,
+		},
+		{
+			MethodName: "EnsureDb",
+			Handler:    _Db_EnsureDb_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

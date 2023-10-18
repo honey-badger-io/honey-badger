@@ -5,6 +5,7 @@ import (
 
 	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/pb"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type DbServer struct {
@@ -13,19 +14,33 @@ type DbServer struct {
 	dbCtx *db.DbContext
 }
 
-func (s *DbServer) Create(ctx context.Context, in *pb.CreateDbRequest) (*pb.EmptyResult, error) {
-	_, err := s.dbCtx.CreateDb(in.Name, in.InMemory)
+func (s *DbServer) Create(ctx context.Context, in *pb.CreateDbReq) (*emptypb.Empty, error) {
+	_, err := s.dbCtx.CreateDb(in.Name, in.Opt.InMemory)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.EmptyResult{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *DbServer) Drop(ctx context.Context, in *pb.DropDbRequest) (*pb.EmptyResult, error) {
+func (s *DbServer) Drop(ctx context.Context, in *pb.DropDbRequest) (*emptypb.Empty, error) {
 	if err := s.dbCtx.DropDb(in.Name); err != nil {
 		return nil, err
 	}
 
-	return &pb.EmptyResult{}, nil
+	return &emptypb.Empty{}, nil
+}
+
+func (s *DbServer) Exists(ctx context.Context, in *pb.ExistsDbReq) (*pb.ExistsDbRes, error) {
+	return &pb.ExistsDbRes{
+		Exists: s.dbCtx.Exists(in.Name),
+	}, nil
+}
+
+func (s *DbServer) EnsureDb(ctx context.Context, in *pb.CreateDbReq) (*emptypb.Empty, error) {
+	if s.dbCtx.Exists(in.Name) {
+		return nil, nil
+	}
+
+	return s.Create(ctx, in)
 }

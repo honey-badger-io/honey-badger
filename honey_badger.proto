@@ -1,21 +1,23 @@
 syntax = "proto3";
-
+import "google/protobuf/empty.proto";
 option go_package = "github.com/honey-badger-io/honey-badger/pb";
 
 package hb;
 
 service Data {
-    rpc Set(SetRequest) returns (EmptyResult) {}
+    rpc Set(SetRequest) returns (google.protobuf.Empty) {}
     rpc Get(KeyRequest) returns (GetResult) {}
-    rpc Delete(KeyRequest) returns (EmptyResult) {}
-    rpc DeleteByPrefix(PrefixRequest) returns (EmptyResult) {}
+    rpc Delete(KeyRequest) returns (google.protobuf.Empty) {}
+    rpc DeleteByPrefix(PrefixRequest) returns (google.protobuf.Empty) {}
     rpc CreateReadStream(ReadStreamReq) returns (stream DataItem) {}
-    rpc CreateSendStream(stream SendStreamReq) returns (EmptyResult) {}
+    rpc CreateSendStream(stream SendStreamReq) returns (google.protobuf.Empty) {}
 }
 
 service Db {
-    rpc Create(CreateDbRequest) returns (EmptyResult) {}
-    rpc Drop(DropDbRequest) returns (EmptyResult) {}
+    rpc Create(CreateDbReq) returns (google.protobuf.Empty) {}
+    rpc Drop(DropDbRequest) returns (google.protobuf.Empty) {}
+    rpc Exists(ExistsDbReq) returns (ExistsDbRes) {}
+    rpc EnsureDb(CreateDbReq) returns (google.protobuf.Empty) {}
 }
 
 service Sys {
@@ -44,9 +46,13 @@ message PrefixRequest {
     string prefix = 2;
 }
 
-message CreateDbRequest {
+message CreateDbOpt {
+    bool inMemory = 1;
+}
+
+message CreateDbReq {
     string name = 1;
-    bool inMemory = 2;
+    CreateDbOpt opt = 2;
 }
 
 message DropDbRequest {
@@ -58,8 +64,6 @@ message PingRequest {}
 message PingResult {
     string mesage = 1;
 }
-
-message EmptyResult {}
 
 message ReadStreamReq {
     string db = 1;
@@ -74,4 +78,12 @@ message SendStreamReq {
 message DataItem {
     string key = 1;
     bytes data = 2;
+}
+
+message ExistsDbReq {
+    string name = 1;
+}
+
+message ExistsDbRes {
+    bool exists = 1;
 }

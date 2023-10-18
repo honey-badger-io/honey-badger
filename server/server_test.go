@@ -15,17 +15,24 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+const (
+	DbName = "test-db"
+)
+
 func TestDbServer(t *testing.T) {
 	conn, server := startServer()
 	defer conn.Close()
 	defer server.Stop()
 
 	client := pb.NewDbClient(conn)
+	const db = "test-create-db"
 
 	t.Run("should call create database", func(t *testing.T) {
-		_, err := client.Create(context.TODO(), &pb.CreateDbRequest{
-			Name:     "test-db",
-			InMemory: true,
+		_, err := client.Create(context.TODO(), &pb.CreateDbReq{
+			Name: db,
+			Opt: &pb.CreateDbOpt{
+				InMemory: true,
+			},
 		})
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
@@ -33,7 +40,27 @@ func TestDbServer(t *testing.T) {
 
 	t.Run("should call drop database", func(t *testing.T) {
 		_, err := client.Drop(context.TODO(), &pb.DropDbRequest{
-			Name: "test-db",
+			Name: db,
+		})
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+	})
+
+	t.Run("should call exists database", func(t *testing.T) {
+		res, err := client.Exists(context.TODO(), &pb.ExistsDbReq{
+			Name: "test-db-exists",
+		})
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.False(t, res.Exists)
+	})
+
+	t.Run("should call ensure db", func(t *testing.T) {
+		_, err := client.EnsureDb(context.TODO(), &pb.CreateDbReq{
+			Name: "test-db-ensure",
+			Opt: &pb.CreateDbOpt{
+				InMemory: true,
+			},
 		})
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
@@ -46,10 +73,21 @@ func TestDataServer(t *testing.T) {
 	defer server.Stop()
 
 	client := pb.NewDataClient(conn)
+	db := pb.NewDbClient(conn)
+
+	_, err := db.Create(context.TODO(), &pb.CreateDbReq{
+		Name: DbName,
+		Opt: &pb.CreateDbOpt{
+			InMemory: true,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
 
 	t.Run("should call set", func(t *testing.T) {
 		_, err := client.Set(context.TODO(), &pb.SetRequest{
-			Db:   "test-db",
+			Db:   DbName,
 			Key:  "test-key",
 			Data: []byte("test"),
 		})
@@ -59,7 +97,7 @@ func TestDataServer(t *testing.T) {
 
 	t.Run("should call get", func(t *testing.T) {
 		_, err := client.Get(context.TODO(), &pb.KeyRequest{
-			Db:  "test-db",
+			Db:  DbName,
 			Key: "test-key",
 		})
 
@@ -68,7 +106,7 @@ func TestDataServer(t *testing.T) {
 
 	t.Run("should call delete", func(t *testing.T) {
 		_, err := client.Delete(context.TODO(), &pb.KeyRequest{
-			Db:  "test-db",
+			Db:  DbName,
 			Key: "test-test",
 		})
 
@@ -77,7 +115,7 @@ func TestDataServer(t *testing.T) {
 
 	t.Run("should call delete by prefix", func(t *testing.T) {
 		_, err := client.DeleteByPrefix(context.TODO(), &pb.PrefixRequest{
-			Db:     "test-db",
+			Db:     DbName,
 			Prefix: "test-",
 		})
 
@@ -91,7 +129,7 @@ func TestDataServer(t *testing.T) {
 		}
 
 		sendErr := stream.Send(&pb.SendStreamReq{
-			Db: "test-db",
+			Db: DbName,
 		})
 
 		_, err = stream.CloseAndRecv()
@@ -103,7 +141,7 @@ func TestDataServer(t *testing.T) {
 	t.Run("should call get data stream", func(t *testing.T) {
 		prefix := "data-stream-"
 		res, err := client.CreateReadStream(context.TODO(), &pb.ReadStreamReq{
-			Db:     "test-db",
+			Db:     DbName,
 			Prefix: &prefix,
 		})
 

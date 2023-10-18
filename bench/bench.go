@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"runtime"
 	"sync"
 	"time"
@@ -34,15 +33,7 @@ const (
 	BatchItemPrefix = "batch-item"
 )
 
-func benchSet(target string) {
-	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-
-	client := pb.NewDataClient(conn)
-
+func benchSet(client pb.DataClient) {
 	payload := make([]byte, PayloadSize)
 
 	fmt.Println("")
@@ -64,15 +55,7 @@ func benchSet(target string) {
 	}
 }
 
-func benchGet(target string) {
-	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-
-	client := pb.NewDataClient(conn)
-
+func benchGet(client pb.DataClient) {
 	fmt.Println("")
 	fmt.Printf("payload size: %d bytes\n", PayloadSize)
 	fmt.Printf("num goroutines: %d\n", NumGoProc)
@@ -92,15 +75,7 @@ func benchGet(target string) {
 	}
 }
 
-func benchSendStream(target string) {
-	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-
-	client := pb.NewDataClient(conn)
-
+func benchSendStream(client pb.DataClient) {
 	fmt.Println("")
 	fmt.Printf("payload size: %d bytes\n", PayloadSize)
 	fmt.Printf("num goroutines: %d\n", 1)
@@ -142,15 +117,7 @@ func benchSendStream(target string) {
 	}
 }
 
-func benchReadStream(target string) {
-	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-
-	client := pb.NewDataClient(conn)
-
+func benchReadStream(client pb.DataClient) {
 	fmt.Println("")
 	fmt.Printf("payload size: %d bytes\n", PayloadSize)
 	fmt.Printf("num goroutines: %d\n", 1)
@@ -207,11 +174,30 @@ func sendGet(index int, client pb.DataClient, limiter <-chan int, wg *sync.WaitG
 }
 
 func Run(target string) {
+	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDataClient(conn)
+	dbClient := pb.NewDbClient(conn)
+
+	_, err = dbClient.EnsureDb(context.TODO(), &pb.CreateDbReq{
+		Name: DbName,
+		Opt: &pb.CreateDbOpt{
+			InMemory: true,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
 	fmt.Printf("os: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 	fmt.Printf("cpus: %d\n", runtime.NumCPU())
 
-	benchSet(target)
-	benchGet(target)
-	benchSendStream(target)
-	benchReadStream(target)
+	benchSet(client)
+	benchGet(client)
+	benchSendStream(client)
+	benchReadStream(client)
 }

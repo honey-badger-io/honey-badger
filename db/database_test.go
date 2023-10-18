@@ -124,7 +124,9 @@ func TestStreamData(t *testing.T) {
 }
 
 func getDb() *Database {
-	db, err := CreateCtx(config.BadgerConfig{}).GetDb("test")
+	ctx := CreateCtx(config.BadgerConfig{})
+
+	db, err := ctx.CreateDb("test", true)
 	if err != nil {
 		panic(err)
 

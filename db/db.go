@@ -47,6 +47,7 @@ func (ctx *DbContext) LoadDbs() error {
 		opt := badger.DefaultOptions(dbPath).
 			WithLogger(logger.Badger())
 
+		ctx.logger.Infof("Loading '%s'", name)
 		b, err := badger.Open(opt)
 		if err != nil {
 			return err
@@ -67,11 +68,7 @@ func (ctx *DbContext) LoadDbs() error {
 func (ctx *DbContext) GetDb(name string) (*Database, error) {
 	db := ctx.dbs[name]
 	if db == nil {
-		_, err := ctx.CreateDb(name, true)
-
-		if err != nil {
-			return nil, err
-		}
+		return nil, errors.New("db does not exists")
 	}
 
 	return ctx.dbs[name], nil
@@ -102,6 +99,8 @@ func (ctx *DbContext) DropDb(name string) error {
 	}
 
 	delete(ctx.dbs, name)
+
+	ctx.logger.Infof("Dropped '%s'", name)
 
 	return nil
 }
@@ -156,6 +155,10 @@ func (ctx *DbContext) Close() {
 	}
 }
 
+func (ctx *DbContext) Exists(name string) bool {
+	return ctx.dbs[name] != nil
+}
+
 func startGCRoutine(ctx *DbContext) {
 	period := time.Duration(ctx.config.GCPeriodMin) * time.Minute
 	ctx.gcTicker.Reset(period)
@@ -164,10 +167,15 @@ func startGCRoutine(ctx *DbContext) {
 	go func() {
 		for range ctx.gcTicker.C {
 			for name, itm := range ctx.dbs {
+				// Do not run GC on in memory databases
+				if itm.b.Opts().InMemory {
+					continue
+				}
+
 				ctx.logger.Infof("Running GC on database '%s'...", name)
-				err := itm.b.RunValueLogGC(0.7)
+				err := itm.b.RunValueLogGC(0.5)
 				if err != nil {
-					ctx.logger.Error(err)
+					ctx.logger.Warning(err)
 				}
 			}
 		}
