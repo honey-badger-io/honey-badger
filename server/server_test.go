@@ -28,9 +28,11 @@ func TestDbServer(t *testing.T) {
 	const db = "test-create-db"
 
 	t.Run("should call create database", func(t *testing.T) {
-		_, err := client.Create(context.TODO(), &pb.CreateDbRequest{
-			Name:     db,
-			InMemory: true,
+		_, err := client.Create(context.TODO(), &pb.CreateDbReq{
+			Name: db,
+			Opt: &pb.CreateDbOpt{
+				InMemory: true,
+			},
 		})
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
@@ -52,6 +54,17 @@ func TestDbServer(t *testing.T) {
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 		assert.False(t, res.Exists)
 	})
+
+	t.Run("should call ensure db", func(t *testing.T) {
+		_, err := client.EnsureDb(context.TODO(), &pb.CreateDbReq{
+			Name: "test-db-ensure",
+			Opt: &pb.CreateDbOpt{
+				InMemory: true,
+			},
+		})
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+	})
 }
 
 func TestDataServer(t *testing.T) {
@@ -62,9 +75,11 @@ func TestDataServer(t *testing.T) {
 	client := pb.NewDataClient(conn)
 	db := pb.NewDbClient(conn)
 
-	_, err := db.Create(context.TODO(), &pb.CreateDbRequest{
-		Name:     DbName,
-		InMemory: true,
+	_, err := db.Create(context.TODO(), &pb.CreateDbReq{
+		Name: DbName,
+		Opt: &pb.CreateDbOpt{
+			InMemory: true,
+		},
 	})
 	if err != nil {
 		panic(err)

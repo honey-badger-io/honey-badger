@@ -183,18 +183,14 @@ func Run(target string) {
 	client := pb.NewDataClient(conn)
 	dbClient := pb.NewDbClient(conn)
 
-	existsRes, _ := dbClient.Exists(context.TODO(), &pb.ExistsDbReq{
+	_, err = dbClient.EnsureDb(context.TODO(), &pb.CreateDbReq{
 		Name: DbName,
-	})
-
-	if !existsRes.Exists {
-		_, err = dbClient.Create(context.TODO(), &pb.CreateDbRequest{
-			Name:     DbName,
+		Opt: &pb.CreateDbOpt{
 			InMemory: true,
-		})
-		if err != nil {
-			panic(err)
-		}
+		},
+	})
+	if err != nil {
+		panic(err)
 	}
 
 	fmt.Printf("os: %s/%s\n", runtime.GOOS, runtime.GOARCH)
