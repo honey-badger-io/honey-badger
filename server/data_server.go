@@ -19,7 +19,7 @@ type DataServer struct {
 func (s *DataServer) Set(ctx context.Context, in *pb.SetRequest) (*emptypb.Empty, error) {
 	db, err := s.dbCtx.GetDb(in.Db)
 	if err != nil {
-		return nil, err
+		return &emptypb.Empty{}, err
 	}
 
 	var ttl uint = 0
@@ -29,7 +29,7 @@ func (s *DataServer) Set(ctx context.Context, in *pb.SetRequest) (*emptypb.Empty
 
 	err = db.Set(in.Key, in.Data, ttl)
 	if err != nil {
-		return nil, err
+		return &emptypb.Empty{}, err
 	}
 
 	return &emptypb.Empty{}, nil
@@ -52,11 +52,11 @@ func (s *DataServer) Get(ctx context.Context, in *pb.KeyRequest) (*pb.GetResult,
 func (s *DataServer) Delete(ctx context.Context, in *pb.KeyRequest) (*emptypb.Empty, error) {
 	db, err := s.dbCtx.GetDb(in.Db)
 	if err != nil {
-		return nil, err
+		return &emptypb.Empty{}, err
 	}
 
 	if err := db.DeleteByKey(in.Key); err != nil {
-		return nil, err
+		return &emptypb.Empty{}, err
 	}
 
 	return &emptypb.Empty{}, nil
@@ -65,11 +65,11 @@ func (s *DataServer) Delete(ctx context.Context, in *pb.KeyRequest) (*emptypb.Em
 func (s *DataServer) DeleteByPrefix(ctx context.Context, in *pb.PrefixRequest) (*emptypb.Empty, error) {
 	db, err := s.dbCtx.GetDb(in.Db)
 	if err != nil {
-		return nil, err
+		return &emptypb.Empty{}, err
 	}
 
 	if err := db.DeleteByPrefix(in.Prefix); err != nil {
-		return nil, err
+		return &emptypb.Empty{}, err
 	}
 
 	return &emptypb.Empty{}, nil

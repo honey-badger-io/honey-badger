@@ -17,7 +17,7 @@ type DbServer struct {
 func (s *DbServer) Create(ctx context.Context, in *pb.CreateDbReq) (*emptypb.Empty, error) {
 	_, err := s.dbCtx.CreateDb(in.Name, in.Opt.InMemory)
 	if err != nil {
-		return nil, err
+		return &emptypb.Empty{}, err
 	}
 
 	return &emptypb.Empty{}, nil
@@ -25,7 +25,7 @@ func (s *DbServer) Create(ctx context.Context, in *pb.CreateDbReq) (*emptypb.Emp
 
 func (s *DbServer) Drop(ctx context.Context, in *pb.DropDbRequest) (*emptypb.Empty, error) {
 	if err := s.dbCtx.DropDb(in.Name); err != nil {
-		return nil, err
+		return &emptypb.Empty{}, err
 	}
 
 	return &emptypb.Empty{}, nil
@@ -39,7 +39,7 @@ func (s *DbServer) Exists(ctx context.Context, in *pb.ExistsDbReq) (*pb.ExistsDb
 
 func (s *DbServer) EnsureDb(ctx context.Context, in *pb.CreateDbReq) (*emptypb.Empty, error) {
 	if s.dbCtx.Exists(in.Name) {
-		return nil, nil
+		return &emptypb.Empty{}, nil
 	}
 
 	return s.Create(ctx, in)
