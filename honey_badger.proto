@@ -29,6 +29,7 @@ message SetRequest {
     string key = 2;
     bytes data = 3;
     optional int32 ttl = 4;
+    repeated string tags = 5;
 }
 
 message KeyRequest {

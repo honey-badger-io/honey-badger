@@ -24,7 +24,7 @@ func TestGet(t *testing.T) {
 
 	t.Run("should return data if key is found", func(t *testing.T) {
 		const key = "test-key2"
-		db.Set(key, []byte{1, 3, 4}, 0)
+		db.Set(key, []byte{1, 3, 4}, 0, make([]string, 0))
 
 		data, hit, err := db.Get(key)
 		if err != nil {
@@ -36,14 +36,28 @@ func TestGet(t *testing.T) {
 	})
 }
 
-func TestAdd(t *testing.T) {
+func TestSet(t *testing.T) {
 	db := getDb()
 
 	t.Run("should set key", func(t *testing.T) {
 		const key = "set-test-key"
 		var data = []byte{1, 2, 3}
 
-		if err := db.Set(key, data, 0); err != nil {
+		if err := db.Set(key, data, 0, make([]string, 0)); err != nil {
+			panic(err)
+		}
+
+		dataRes, _, _ := db.Get(key)
+
+		assert.EqualValues(t, data, dataRes)
+	})
+
+	t.Run("should set key with tags", func(t *testing.T) {
+		const key = "product-1"
+		var data = []byte{1, 2, 3}
+		var tags = []string{"products", "test"}
+
+		if err := db.Set(key, data, 0, tags); err != nil {
 			panic(err)
 		}
 
@@ -58,7 +72,7 @@ func TestDeleteByKey(t *testing.T) {
 
 	t.Run("should delete value by key", func(t *testing.T) {
 		const key = "test-key2"
-		db.Set(key, []byte{1, 2, 3}, 0)
+		db.Set(key, []byte{1, 2, 3}, 0, make([]string, 0))
 
 		if err := db.DeleteByKey(key); err != nil {
 			panic(err)
@@ -84,8 +98,8 @@ func TestDeleteByPrefix(t *testing.T) {
 			key2 = "deleteprefix-test-2"
 		)
 
-		db.Set(key1, data1, 0)
-		db.Set(key2, data2, 0)
+		db.Set(key1, data1, 0, make([]string, 0))
+		db.Set(key2, data2, 0, make([]string, 0))
 
 		if err := db.DeleteByPrefix("deleteprefix"); err != nil {
 			panic(err)

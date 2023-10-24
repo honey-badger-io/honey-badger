@@ -27,7 +27,7 @@ func (s *DataServer) Set(ctx context.Context, in *pb.SetRequest) (*emptypb.Empty
 		ttl = uint(*in.Ttl)
 	}
 
-	err = db.Set(in.Key, in.Data, ttl)
+	err = db.Set(in.Key, in.Data, ttl, in.Tags)
 	if err != nil {
 		return &emptypb.Empty{}, err
 	}

@@ -9,6 +9,11 @@ import (
 	hpb "github.com/honey-badger-io/honey-badger/pb"
 )
 
+const (
+	UserMetaTag  byte   = 255
+	TagDelimiter string = "_tag_"
+)
+
 type Database struct {
 	b *badger.DB
 }
@@ -78,12 +83,25 @@ func (db *Database) Stats() DbStats {
 	return stats
 }
 
-func (db *Database) Set(key string, data []byte, ttl uint) error {
+func (db *Database) Set(key string, data []byte, ttl uint, tags []string) error {
 	return db.b.Update(func(txn *badger.Txn) error {
 		entry := badger.NewEntry([]byte(key), data)
 
 		if ttl > 0 {
 			entry = entry.WithTTL(time.Duration(ttl) * time.Second)
+		}
+
+		for _, tag := range tags {
+			tagEntry := badger.NewEntry([]byte(tag+TagDelimiter+key), make([]byte, 0))
+			tagEntry = tagEntry.WithMeta(UserMetaTag)
+
+			if ttl > 0 {
+				tagEntry = tagEntry.WithTTL(time.Duration(ttl) * time.Second)
+			}
+
+			if err := txn.SetEntry(tagEntry); err != nil {
+				return err
+			}
 		}
 
 		return txn.SetEntry(entry)
