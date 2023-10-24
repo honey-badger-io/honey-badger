@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -148,6 +149,58 @@ func (db *Database) ReadDataByPrefix(ctx context.Context, prefix string, callbac
 			item := hpb.DataItem{
 				Key:  string(kv.Key),
 				Data: kv.Value,
+			}
+			if err := callback(&item); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	return stream.Orchestrate(ctx)
+}
+
+func (db *Database) ReadDataByTag(ctx context.Context, tag string, callback ReadDataClbk) error {
+	stream := db.b.NewStream()
+	txn := db.b.NewTransaction(false)
+	defer txn.Discard()
+
+	stream.LogPrefix = "ReadDataByTag"
+	stream.Prefix = []byte(tag + TagDelimiter)
+	stream.Send = func(buf *z.Buffer) error {
+		list, err := badger.BufferToKVList(buf)
+		if err != nil {
+			return err
+		}
+
+		for _, kv := range list.Kv {
+			_, key, found := strings.Cut(string(kv.Key), TagDelimiter)
+			if !found {
+				continue
+			}
+
+			itm, err := txn.Get([]byte(key))
+			if err == badger.ErrKeyNotFound {
+				continue
+			}
+
+			if err != nil {
+				return err
+			}
+
+			data, err := itm.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+
+			if err != nil {
+				return err
+			}
+
+			item := hpb.DataItem{
+				Key:  key,
+				Data: data,
 			}
 			if err := callback(&item); err != nil {
 				return err

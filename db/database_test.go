@@ -110,10 +110,10 @@ func TestDeleteByPrefix(t *testing.T) {
 	})
 }
 
-func TestStreamData(t *testing.T) {
+func TestReadDataByPrefix(t *testing.T) {
 	db := getDb()
 
-	t.Run("should stream data", func(t *testing.T) {
+	t.Run("should data by prefix", func(t *testing.T) {
 		const DataLen = 3
 		resultData := make(map[string][]byte)
 		writer := db.NewWriter()
@@ -134,6 +134,27 @@ func TestStreamData(t *testing.T) {
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 		assert.Equal(t, DataLen, len(resultData))
+	})
+}
+
+func TestReadDataByTag(t *testing.T) {
+	db := getDb()
+
+	t.Run("should data by tag", func(t *testing.T) {
+		resultData := make(map[string][]byte)
+
+		db.Set("item-1", []byte{1}, 0, []string{"products"})
+		db.Set("item-2", []byte{2}, 0, []string{"products"})
+
+		err := db.ReadDataByTag(context.TODO(), "products", func(item *pb.DataItem) error {
+			resultData[item.Key] = item.Data
+			return nil
+		})
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.Equal(t, 2, len(resultData))
+		assert.Equal(t, []byte{1}, resultData["item-1"])
+		assert.Equal(t, []byte{2}, resultData["item-2"])
 	})
 }
 
