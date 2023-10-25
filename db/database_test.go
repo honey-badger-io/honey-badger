@@ -173,6 +173,21 @@ func TestDeleteByTag(t *testing.T) {
 		assert.False(t, found1, "'TextDeleteByTag-1' not removed")
 		assert.False(t, found2, "'TextDeleteByTag-2' not removed")
 	})
+
+	t.Run("should delete entries by tag with all tag entries", func(t *testing.T) {
+		db.Set("TagItem-1", []byte{1}, 0, []string{"FirstTag"})
+		db.Set("TagItem-2", []byte{2}, 0, []string{"FirstTag", "SecondTag"})
+
+		err := db.DeleteByTag("FirstTag")
+		_, found1, _ := db.Get("TagItem-1")
+		_, found2, _ := db.Get("TagItem-2")
+		_, foundTagEntry, _ := db.Get("SecondTag_tag_TagItem-2")
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.False(t, found1, "'TagItem-1' not removed")
+		assert.False(t, found2, "'TagItem-2' not removed")
+		assert.False(t, foundTagEntry, "'SecondTag_tag_TagItem-2' not removed")
+	})
 }
 
 func getDb() *Database {

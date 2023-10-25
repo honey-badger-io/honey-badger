@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	UserMetaTag  byte   = 255
-	TagDelimiter string = "_tag_"
+	TagDelimiter   string = "_tag_"
+	ItemTagsPrefix string = "_tags_"
 )
 
 type Database struct {
@@ -59,6 +59,24 @@ func (db *Database) Get(key string) ([]byte, bool, error) {
 	return value, true, nil
 }
 
+func (db *Database) GetTags(key string) ([]string, error) {
+	tags := make([]string, 0)
+
+	err := db.b.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(ItemTagsPrefix + key))
+		if err == badger.ErrKeyNotFound {
+			return nil
+		}
+
+		return item.Value(func(val []byte) error {
+			tags = strings.Split(string(val), ",")
+			return nil
+		})
+	})
+
+	return tags, err
+}
+
 func (db *Database) Stats() DbStats {
 	lsm, vlog := db.b.Size()
 	options := db.b.Opts()
@@ -92,16 +110,32 @@ func (db *Database) Set(key string, data []byte, ttl uint, tags []string) error 
 			entry = entry.WithTTL(time.Duration(ttl) * time.Second)
 		}
 
+		// Create tag entries
 		for _, tag := range tags {
 			// Tag entry has key format tagName_tag_itemKey
 			tagEntry := badger.NewEntry([]byte(tag+TagDelimiter+key), make([]byte, 0))
-			tagEntry = tagEntry.WithMeta(UserMetaTag)
 
 			if ttl > 0 {
 				tagEntry = tagEntry.WithTTL(time.Duration(ttl) * time.Second)
 			}
 
 			if err := txn.SetEntry(tagEntry); err != nil {
+				return err
+			}
+		}
+
+		// Create entry with tags list
+		if len(tags) > 0 {
+			itemTagsKey := []byte(ItemTagsPrefix + key)
+			itemTagsValue := []byte(strings.Join(tags, ","))
+
+			itemTagsEntry := badger.NewEntry(itemTagsKey, itemTagsValue)
+
+			if ttl > 0 {
+				itemTagsEntry = itemTagsEntry.WithTTL(time.Duration(ttl) * time.Second)
+			}
+
+			if err := txn.SetEntry(itemTagsEntry); err != nil {
 				return err
 			}
 		}
@@ -143,12 +177,23 @@ func (db *Database) DeleteByTag(tag string) error {
 			// Tag entry has key format tagName_tag_itemKey
 			_, childKey, _ := strings.Cut(string(tagEntryKey), TagDelimiter)
 
+			// Deletes the entry
 			if err := txn.Delete([]byte(childKey)); err != nil {
 				return err
 			}
 
-			if err := txn.Delete(tagEntryKey); err != nil {
-				return err
+			// Get all tags of the item
+			itemTags, err := db.GetTags(childKey)
+			if err != nil {
+				return nil
+			}
+
+			for _, tag := range itemTags {
+				tagEntryKey := tag + TagDelimiter + childKey
+
+				if err := txn.Delete([]byte(tagEntryKey)); err != nil {
+					return err
+				}
 			}
 		}
 
