@@ -93,6 +93,7 @@ func (db *Database) Set(key string, data []byte, ttl uint, tags []string) error 
 		}
 
 		for _, tag := range tags {
+			// Tag entry has key format tagName_tag_itemKey
 			tagEntry := badger.NewEntry([]byte(tag+TagDelimiter+key), make([]byte, 0))
 			tagEntry = tagEntry.WithMeta(UserMetaTag)
 
@@ -126,6 +127,33 @@ func (db *Database) DeleteByKey(key string) error {
 
 func (db *Database) DeleteByPrefix(prefix string) error {
 	return db.b.DropPrefix([]byte(prefix))
+}
+
+func (db *Database) DeleteByTag(tag string) error {
+	return db.b.Update(func(txn *badger.Txn) error {
+		options := badger.DefaultIteratorOptions
+		options.Prefix = []byte(tag + TagDelimiter)
+
+		itr := txn.NewIterator(options)
+		defer itr.Close()
+
+		for itr.Rewind(); itr.Valid(); itr.Next() {
+			tagEntryKey := itr.Item().Key()
+
+			// Tag entry has key format tagName_tag_itemKey
+			_, childKey, _ := strings.Cut(string(tagEntryKey), TagDelimiter)
+
+			if err := txn.Delete([]byte(childKey)); err != nil {
+				return err
+			}
+
+			if err := txn.Delete(tagEntryKey); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (db *Database) NewWriter() *Writer {
@@ -174,8 +202,9 @@ func (db *Database) ReadDataByTag(ctx context.Context, tag string, callback Read
 			return err
 		}
 
-		for _, kv := range list.Kv {
-			_, key, found := strings.Cut(string(kv.Key), TagDelimiter)
+		for _, tagEntry := range list.Kv {
+			// Tag entry has key format tagName_tag_itemKey
+			_, key, found := strings.Cut(string(tagEntry.Key), TagDelimiter)
 			if !found {
 				continue
 			}

@@ -158,6 +158,23 @@ func TestReadDataByTag(t *testing.T) {
 	})
 }
 
+func TestDeleteByTag(t *testing.T) {
+	db := getDb()
+
+	t.Run("should delete entries by tag", func(t *testing.T) {
+		db.Set("TextDeleteByTag-1", []byte{1}, 0, []string{"TextDeleteByTag"})
+		db.Set("TextDeleteByTag-2", []byte{2}, 0, []string{"TextDeleteByTag"})
+
+		err := db.DeleteByTag("TextDeleteByTag")
+		_, found1, _ := db.Get("TextDeleteByTag-1")
+		_, found2, _ := db.Get("TextDeleteByTag-2")
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.False(t, found1, "'TextDeleteByTag-1' not removed")
+		assert.False(t, found2, "'TextDeleteByTag-2' not removed")
+	})
+}
+
 func getDb() *Database {
 	ctx := CreateCtx(config.BadgerConfig{})
 
