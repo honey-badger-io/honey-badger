@@ -75,6 +75,19 @@ func (s *DataServer) DeleteByPrefix(ctx context.Context, in *pb.PrefixRequest) (
 	return &emptypb.Empty{}, nil
 }
 
+func (s *DataServer) DeleteByTag(ctx context.Context, in *pb.DeleteByTagReq) (*emptypb.Empty, error) {
+	db, err := s.dbCtx.GetDb(in.Db)
+	if err != nil {
+		return &emptypb.Empty{}, err
+	}
+
+	if err := db.DeleteByTag(in.Tag); err != nil {
+		return &emptypb.Empty{}, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (s *DataServer) CreateReadStream(in *pb.ReadStreamReq, stream pb.Data_CreateReadStreamServer) error {
 	db, err := s.dbCtx.GetDb(in.Db)
 	if err != nil {

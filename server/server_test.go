@@ -150,6 +150,15 @@ func TestDataServer(t *testing.T) {
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 		assert.Equal(t, io.EOF, errRecv)
 	})
+
+	t.Run("should call DeleteByTag", func(t *testing.T) {
+		_, err := client.DeleteByTag(context.TODO(), &pb.DeleteByTagReq{
+			Db:  DbName,
+			Tag: "test-tag",
+		})
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+	})
 }
 
 func startServer() (*grpc.ClientConn, *Server) {

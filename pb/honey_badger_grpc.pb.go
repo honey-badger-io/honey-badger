@@ -24,6 +24,7 @@ const (
 	Data_Get_FullMethodName              = "/hb.Data/Get"
 	Data_Delete_FullMethodName           = "/hb.Data/Delete"
 	Data_DeleteByPrefix_FullMethodName   = "/hb.Data/DeleteByPrefix"
+	Data_DeleteByTag_FullMethodName      = "/hb.Data/DeleteByTag"
 	Data_CreateReadStream_FullMethodName = "/hb.Data/CreateReadStream"
 	Data_CreateSendStream_FullMethodName = "/hb.Data/CreateSendStream"
 )
@@ -36,6 +37,7 @@ type DataClient interface {
 	Get(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*GetResult, error)
 	Delete(ctx context.Context, in *KeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteByPrefix(ctx context.Context, in *PrefixRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteByTag(ctx context.Context, in *DeleteByTagReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	CreateReadStream(ctx context.Context, in *ReadStreamReq, opts ...grpc.CallOption) (Data_CreateReadStreamClient, error)
 	CreateSendStream(ctx context.Context, opts ...grpc.CallOption) (Data_CreateSendStreamClient, error)
 }
@@ -78,6 +80,15 @@ func (c *dataClient) Delete(ctx context.Context, in *KeyRequest, opts ...grpc.Ca
 func (c *dataClient) DeleteByPrefix(ctx context.Context, in *PrefixRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Data_DeleteByPrefix_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dataClient) DeleteByTag(ctx context.Context, in *DeleteByTagReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Data_DeleteByTag_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +169,7 @@ type DataServer interface {
 	Get(context.Context, *KeyRequest) (*GetResult, error)
 	Delete(context.Context, *KeyRequest) (*emptypb.Empty, error)
 	DeleteByPrefix(context.Context, *PrefixRequest) (*emptypb.Empty, error)
+	DeleteByTag(context.Context, *DeleteByTagReq) (*emptypb.Empty, error)
 	CreateReadStream(*ReadStreamReq, Data_CreateReadStreamServer) error
 	CreateSendStream(Data_CreateSendStreamServer) error
 	mustEmbedUnimplementedDataServer()
@@ -178,6 +190,9 @@ func (UnimplementedDataServer) Delete(context.Context, *KeyRequest) (*emptypb.Em
 }
 func (UnimplementedDataServer) DeleteByPrefix(context.Context, *PrefixRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteByPrefix not implemented")
+}
+func (UnimplementedDataServer) DeleteByTag(context.Context, *DeleteByTagReq) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteByTag not implemented")
 }
 func (UnimplementedDataServer) CreateReadStream(*ReadStreamReq, Data_CreateReadStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method CreateReadStream not implemented")
@@ -270,6 +285,24 @@ func _Data_DeleteByPrefix_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Data_DeleteByTag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteByTagReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DataServer).DeleteByTag(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Data_DeleteByTag_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DataServer).DeleteByTag(ctx, req.(*DeleteByTagReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Data_CreateReadStream_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ReadStreamReq)
 	if err := stream.RecvMsg(m); err != nil {
@@ -339,6 +372,10 @@ var Data_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteByPrefix",
 			Handler:    _Data_DeleteByPrefix_Handler,
+		},
+		{
+			MethodName: "DeleteByTag",
+			Handler:    _Data_DeleteByTag_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

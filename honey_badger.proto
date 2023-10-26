@@ -9,6 +9,7 @@ service Data {
     rpc Get(KeyRequest) returns (GetResult) {}
     rpc Delete(KeyRequest) returns (google.protobuf.Empty) {}
     rpc DeleteByPrefix(PrefixRequest) returns (google.protobuf.Empty) {}
+    rpc DeleteByTag(DeleteByTagReq) returns (google.protobuf.Empty) {}
     rpc CreateReadStream(ReadStreamReq) returns (stream DataItem) {}
     rpc CreateSendStream(stream SendStreamReq) returns (google.protobuf.Empty) {}
 }
@@ -87,4 +88,9 @@ message ExistsDbReq {
 
 message ExistsDbRes {
     bool exists = 1;
+}
+
+message DeleteByTagReq {
+    string db = 1;
+    string tag = 2; 
 }
