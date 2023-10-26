@@ -117,12 +117,27 @@ func TestDeleteByPrefix(t *testing.T) {
 		db.Set(key1, data1, 0, make([]string, 0))
 		db.Set(key2, data2, 0, make([]string, 0))
 
-		if err := db.DeleteByPrefix("deleteprefix"); err != nil {
-			panic(err)
-		}
+		err := db.DeleteByPrefix("deleteprefix")
 
-		//res, _ := db.GetByPrefix(context.Background(), "deleteprefix")
-		//assert.Empty(t, res)
+		_, foundKey1, _ := db.Get(key1)
+		_, foundKey2, _ := db.Get(key2)
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.False(t, foundKey1, "key1 should NOT be found")
+		assert.False(t, foundKey2, "key2 should NOT be found")
+	})
+
+	t.Run("should delete data by prefix with all tag items", func(t *testing.T) {
+		var key = "deleteprefix-tag-test-1"
+
+		db.Set(key, make([]byte, 1), 0, []string{"tag"})
+
+		err := db.DeleteByPrefix("deleteprefix")
+
+		_, foundTagItem, _ := db.Get("tag" + TagDelimiter + key)
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.False(t, foundTagItem, "tag item should NOT be found")
 	})
 }
 

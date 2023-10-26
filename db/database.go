@@ -182,7 +182,35 @@ func (db *Database) DeleteByKey(key string) error {
 }
 
 func (db *Database) DeleteByPrefix(prefix string) error {
-	return db.b.DropPrefix([]byte(prefix))
+	return db.b.Update(func(txn *badger.Txn) error {
+		options := badger.DefaultIteratorOptions
+		options.Prefix = []byte(prefix)
+
+		itr := txn.NewIterator(options)
+		defer itr.Close()
+
+		for itr.Rewind(); itr.Valid(); itr.Next() {
+			key := itr.Item().Key()
+			keyStr := string(key)
+
+			if err := txn.Delete(key); err != nil {
+				return err
+			}
+
+			tags, err := db.GetTags(string(key), txn)
+			if err != nil {
+				return err
+			}
+
+			for _, tag := range tags {
+				if err := txn.Delete([]byte(tag + TagDelimiter + keyStr)); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
 }
 
 func (db *Database) DeleteByTag(tag string) error {
