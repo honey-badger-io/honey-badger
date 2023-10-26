@@ -59,11 +59,11 @@ func (db *Database) Get(key string) ([]byte, bool, error) {
 	return value, true, nil
 }
 
-func (db *Database) GetTags(key string) ([]string, error) {
+func (db *Database) GetTags(key string, txn *badger.Txn) ([]string, error) {
 	tags := make([]string, 0)
 
-	err := db.b.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(ItemTagsPrefix + key))
+	deleteFunc := func(t *badger.Txn) error {
+		item, err := t.Get([]byte(ItemTagsPrefix + key))
 		if err == badger.ErrKeyNotFound {
 			return nil
 		}
@@ -72,7 +72,17 @@ func (db *Database) GetTags(key string) ([]string, error) {
 			tags = strings.Split(string(val), ",")
 			return nil
 		})
-	})
+	}
+
+	if txn != nil {
+		if err := deleteFunc(txn); err != nil {
+			return tags, err
+		}
+
+		return tags, nil
+	}
+
+	err := db.b.View(deleteFunc)
 
 	return tags, err
 }
@@ -155,6 +165,18 @@ func (db *Database) Sync() error {
 
 func (db *Database) DeleteByKey(key string) error {
 	return db.b.Update(func(txn *badger.Txn) error {
+
+		tags, err := db.GetTags(key, txn)
+		if err != nil {
+			return err
+		}
+
+		for _, tag := range tags {
+			if err := txn.Delete([]byte(tag + TagDelimiter + key)); err != nil {
+				return err
+			}
+		}
+
 		return txn.Delete([]byte(key))
 	})
 }
@@ -183,7 +205,7 @@ func (db *Database) DeleteByTag(tag string) error {
 			}
 
 			// Get all tags of the item
-			itemTags, err := db.GetTags(childKey)
+			itemTags, err := db.GetTags(childKey, txn)
 			if err != nil {
 				return nil
 			}

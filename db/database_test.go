@@ -83,6 +83,22 @@ func TestDeleteByKey(t *testing.T) {
 		assert.False(t, hit)
 		assert.Nil(t, err)
 	})
+
+	t.Run("should delete value by key and all tag entries", func(t *testing.T) {
+		const key = "test-key-tag"
+		db.Set(key, []byte{1}, 0, []string{"delete-tag"})
+
+		if err := db.DeleteByKey(key); err != nil {
+			panic(err)
+		}
+
+		_, hit, err := db.Get(key)
+		_, tagItemFound, _ := db.Get("delete-tag" + TagDelimiter + key)
+
+		assert.False(t, hit)
+		assert.Nil(t, err)
+		assert.False(t, tagItemFound, "tag item should NOT be found")
+	})
 }
 
 func TestDeleteByPrefix(t *testing.T) {
