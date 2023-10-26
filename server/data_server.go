@@ -94,11 +94,15 @@ func (s *DataServer) CreateReadStream(in *pb.ReadStreamReq, stream pb.Data_Creat
 		return err
 	}
 
-	if in.Prefix == nil {
-		return nil
+	if in.Prefix != nil {
+		return db.ReadDataByPrefix(stream.Context(), *in.Prefix, stream.Send)
 	}
 
-	return db.ReadDataByPrefix(stream.Context(), *in.Prefix, stream.Send)
+	if in.Tag != nil {
+		return db.ReadDataByTag(stream.Context(), *in.Tag, stream.Send)
+	}
+
+	return errors.New("use either 'Prefix' or 'Tag'")
 }
 
 func (s *DataServer) CreateSendStream(stream pb.Data_CreateSendStreamServer) error {

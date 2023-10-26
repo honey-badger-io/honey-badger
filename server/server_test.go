@@ -138,7 +138,7 @@ func TestDataServer(t *testing.T) {
 		assert.Nil(t, sendErr, fmt.Sprintf("%v", err))
 	})
 
-	t.Run("should call get data stream", func(t *testing.T) {
+	t.Run("should call get data by prefix", func(t *testing.T) {
 		prefix := "data-stream-"
 		res, err := client.CreateReadStream(context.TODO(), &pb.ReadStreamReq{
 			Db:     DbName,
@@ -148,6 +148,29 @@ func TestDataServer(t *testing.T) {
 		_, errRecv := res.Recv()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.Equal(t, io.EOF, errRecv)
+	})
+
+	t.Run("should call get data by tag", func(t *testing.T) {
+		tag := "some-tag"
+
+		client.Set(context.TODO(), &pb.SetRequest{
+			Db:   DbName,
+			Key:  "some-key-test",
+			Tags: []string{tag},
+		})
+
+		res, err := client.CreateReadStream(context.TODO(), &pb.ReadStreamReq{
+			Db:  DbName,
+			Tag: &tag,
+		})
+		defer res.CloseSend()
+
+		itm, _ := res.Recv()
+		_, errRecv := res.Recv()
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.NotNil(t, itm)
 		assert.Equal(t, io.EOF, errRecv)
 	})
 
