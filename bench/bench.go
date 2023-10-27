@@ -42,6 +42,7 @@ func benchSet(client pb.DataClient) {
 
 	for i := 0; i < len(getSetIts); i++ {
 		limiter := make(chan int, NumGoProc)
+
 		wg := new(sync.WaitGroup)
 		wg.Add(getSetIts[i])
 
@@ -117,7 +118,7 @@ func benchSendStream(client pb.DataClient) {
 	}
 }
 
-func benchReadStream(client pb.DataClient) {
+func benchReadByPrefix(client pb.DataClient) {
 	fmt.Println("")
 	fmt.Printf("payload size: %d bytes\n", PayloadSize)
 	fmt.Printf("num goroutines: %d\n", 1)
@@ -144,7 +145,40 @@ func benchReadStream(client pb.DataClient) {
 			}
 		}
 
-		fmt.Printf("ReadWithStream_%d: %s\n", batchIts[i], time.Since(start))
+		fmt.Printf("ReadByPrefix_%d: %s\n", batchIts[i], time.Since(start))
+	}
+}
+
+func benchReadByTag(client pb.DataClient) {
+	fmt.Println("")
+	fmt.Printf("payload size: %d bytes\n", PayloadSize)
+	fmt.Printf("num goroutines: %d\n", 1)
+
+	for i := 0; i < len(batchIts); i++ {
+		tag := fmt.Sprintf("tag-%s-%d-", BatchItemPrefix, i)
+
+		start := time.Now()
+		stream, errGet := client.CreateReadStream(context.TODO(), &pb.ReadStreamReq{
+			Db:  DbName,
+			Tag: &tag,
+		})
+		if errGet != nil {
+			panic(errGet)
+		}
+
+		count := 0
+		for {
+			_, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				panic(err)
+			}
+			count++
+		}
+
+		fmt.Printf("ReadByTag_%d: %s\n", count, time.Since(start))
 	}
 }
 
@@ -199,5 +233,13 @@ func Run(target string) {
 	benchSet(client)
 	benchGet(client)
 	benchSendStream(client)
-	benchReadStream(client)
+	benchReadByPrefix(client)
+	benchReadByTag(client)
+
+	_, err = dbClient.Drop(context.TODO(), &pb.DropDbRequest{
+		Name: DbName,
+	})
+	if err != nil {
+		panic(err)
+	}
 }

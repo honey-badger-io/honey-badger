@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"runtime"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -100,6 +101,7 @@ func (ctx *DbContext) DropDb(name string) error {
 
 	delete(ctx.dbs, name)
 
+	runtime.GC()
 	ctx.logger.Infof("Dropped '%s'", name)
 
 	return nil
