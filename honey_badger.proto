@@ -81,6 +81,7 @@ message SendStreamReq {
 message DataItem {
     string key = 1;
     bytes data = 2;
+    repeated string tags = 3;
 }
 
 message ExistsDbReq {

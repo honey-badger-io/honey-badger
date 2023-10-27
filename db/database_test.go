@@ -221,6 +221,46 @@ func TestDeleteByTag(t *testing.T) {
 	})
 }
 
+func TestWriter(t *testing.T) {
+	db := getDb()
+
+	t.Run("should set data with writer", func(t *testing.T) {
+		w := db.NewWriter()
+		key := "test-writer-key"
+
+		err := w.Write(&pb.DataItem{
+			Key:  key,
+			Data: make([]byte, 1),
+		})
+		errCommit := w.Commit()
+		w.Close()
+
+		_, hit, _ := db.Get(key)
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.Nil(t, errCommit, fmt.Sprintf("%v", errCommit))
+		assert.True(t, hit)
+	})
+
+	t.Run("should set data with writer and tags", func(t *testing.T) {
+		w := db.NewWriter()
+		key := "test-writer-key-with-tag"
+		tag := "test-writer-tag"
+
+		w.Write(&pb.DataItem{
+			Key:  key,
+			Data: make([]byte, 1),
+			Tags: []string{tag},
+		})
+		w.Commit()
+		w.Close()
+
+		tags, _ := db.GetTags(key, nil)
+
+		assert.Equal(t, tag, tags[0])
+	})
+}
+
 func getDb() *Database {
 	ctx := CreateCtx(config.BadgerConfig{})
 
