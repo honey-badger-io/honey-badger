@@ -118,6 +118,51 @@ func benchSendStream(client pb.DataClient) {
 	}
 }
 
+func benchSendStreamWithTags(client pb.DataClient) {
+	fmt.Println("")
+	fmt.Printf("payload size: %d bytes\n", PayloadSize)
+	fmt.Printf("num goroutines: %d\n", 1)
+
+	for i := 0; i < len(batchIts); i++ {
+		stream, err := client.CreateSendStream(context.TODO())
+		if err != nil {
+			panic(err)
+		}
+
+		// First message must contain db name
+		dbReq := &pb.SendStreamReq{
+			Db: DbName,
+		}
+		if err := stream.Send(dbReq); err != nil {
+			panic(err)
+		}
+
+		tag := fmt.Sprintf("tag-%d", batchIts[i])
+
+		start := time.Now()
+		for j := 0; j < batchIts[i]; j++ {
+			req := &pb.SendStreamReq{
+				Item: &pb.DataItem{
+					Key:  fmt.Sprintf("%s-%d-%d", BatchItemPrefix, i, j),
+					Data: make([]byte, PayloadSize),
+					Tags: []string{tag},
+				},
+			}
+
+			if err := stream.Send(req); err != nil {
+				panic(err)
+			}
+		}
+
+		_, err = stream.CloseAndRecv()
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("SendWithStreamWithTags_%d: %s\n", batchIts[i], time.Since(start))
+	}
+}
+
 func benchReadByPrefix(client pb.DataClient) {
 	fmt.Println("")
 	fmt.Printf("payload size: %d bytes\n", PayloadSize)
@@ -155,7 +200,7 @@ func benchReadByTag(client pb.DataClient) {
 	fmt.Printf("num goroutines: %d\n", 1)
 
 	for i := 0; i < len(batchIts); i++ {
-		tag := fmt.Sprintf("tag-%s-%d-", BatchItemPrefix, i)
+		tag := fmt.Sprintf("tag-%d", batchIts[i])
 
 		start := time.Now()
 		stream, errGet := client.CreateReadStream(context.TODO(), &pb.ReadStreamReq{
@@ -233,6 +278,7 @@ func Run(target string) {
 	benchSet(client)
 	benchGet(client)
 	benchSendStream(client)
+	benchSendStreamWithTags(client)
 	benchReadByPrefix(client)
 	benchReadByTag(client)
 
