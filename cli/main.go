@@ -30,14 +30,13 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	dbClient := pb.NewDbClient(conn)
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
 		fmt.Printf("%s> ", target)
 		cmdText, _ := reader.ReadString('\n')
 
-		cmd := ParseCommand(context.Background(), strings.Trim(cmdText, "\n"), dbClient)
+		cmd := ParseCommand(context.Background(), strings.Trim(cmdText, "\n"), conn)
 
 		if cmd == nil {
 			fmt.Println("Invalid command")
@@ -46,8 +45,12 @@ func main() {
 
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("ERR: %v", err)
+			continue
 		}
 
-		fmt.Printf("\nDone in %s\n", cmd.Duration())
+		timedCmd, ok := cmd.(MeasurableCmd)
+		if ok {
+			fmt.Printf("\nDone in %s\n", timedCmd.Duration())
+		}
 	}
 }
