@@ -18,3 +18,10 @@ test:
 
 docker:
 	docker build --build-arg ver=$(ver) -t meeron/honey-badger:$(ver) -t meeron/honey-badger:latest .
+
+build-cli:
+	go build -o ./bin/hbclient ./cli
+
+cli: build-cli
+	./bin/hbclient
+

@@ -10,7 +10,8 @@ import (
 )
 
 type Database struct {
-	b *badger.DB
+	b    *badger.DB
+	Name string
 }
 
 type DbStats struct {

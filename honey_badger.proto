@@ -18,6 +18,7 @@ service Db {
     rpc Drop(DropDbRequest) returns (google.protobuf.Empty) {}
     rpc Exists(ExistsDbReq) returns (ExistsDbRes) {}
     rpc EnsureDb(CreateDbReq) returns (google.protobuf.Empty) {}
+    rpc List(google.protobuf.Empty) returns (DbListRes) {}
 }
 
 service Sys {
@@ -86,4 +87,13 @@ message ExistsDbReq {
 
 message ExistsDbRes {
     bool exists = 1;
+}
+
+message DbListItem {
+    string Name = 1;
+    bool InMemory = 2;
+}
+
+message DbListRes {
+    repeated DbListItem Dbs = 1;
 }

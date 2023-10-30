@@ -361,6 +361,7 @@ const (
 	Db_Drop_FullMethodName     = "/hb.Db/Drop"
 	Db_Exists_FullMethodName   = "/hb.Db/Exists"
 	Db_EnsureDb_FullMethodName = "/hb.Db/EnsureDb"
+	Db_List_FullMethodName     = "/hb.Db/List"
 )
 
 // DbClient is the client API for Db service.
@@ -371,6 +372,7 @@ type DbClient interface {
 	Drop(ctx context.Context, in *DropDbRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Exists(ctx context.Context, in *ExistsDbReq, opts ...grpc.CallOption) (*ExistsDbRes, error)
 	EnsureDb(ctx context.Context, in *CreateDbReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DbListRes, error)
 }
 
 type dbClient struct {
@@ -417,6 +419,15 @@ func (c *dbClient) EnsureDb(ctx context.Context, in *CreateDbReq, opts ...grpc.C
 	return out, nil
 }
 
+func (c *dbClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DbListRes, error) {
+	out := new(DbListRes)
+	err := c.cc.Invoke(ctx, Db_List_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DbServer is the server API for Db service.
 // All implementations must embed UnimplementedDbServer
 // for forward compatibility
@@ -425,6 +436,7 @@ type DbServer interface {
 	Drop(context.Context, *DropDbRequest) (*emptypb.Empty, error)
 	Exists(context.Context, *ExistsDbReq) (*ExistsDbRes, error)
 	EnsureDb(context.Context, *CreateDbReq) (*emptypb.Empty, error)
+	List(context.Context, *emptypb.Empty) (*DbListRes, error)
 	mustEmbedUnimplementedDbServer()
 }
 
@@ -443,6 +455,9 @@ func (UnimplementedDbServer) Exists(context.Context, *ExistsDbReq) (*ExistsDbRes
 }
 func (UnimplementedDbServer) EnsureDb(context.Context, *CreateDbReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnsureDb not implemented")
+}
+func (UnimplementedDbServer) List(context.Context, *emptypb.Empty) (*DbListRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedDbServer) mustEmbedUnimplementedDbServer() {}
 
@@ -529,6 +544,24 @@ func _Db_EnsureDb_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Db_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DbServer).List(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Db_List_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DbServer).List(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Db_ServiceDesc is the grpc.ServiceDesc for Db service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -551,6 +584,10 @@ var Db_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EnsureDb",
 			Handler:    _Db_EnsureDb_Handler,
+		},
+		{
+			MethodName: "List",
+			Handler:    _Db_List_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

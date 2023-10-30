@@ -19,6 +19,11 @@ type DbContext struct {
 	logger   *logger.Logger
 }
 
+type DbListItem struct {
+	Name     string
+	InMemory bool
+}
+
 func CreateCtx(c config.BadgerConfig) *DbContext {
 	ctx := &DbContext{
 		dbs:    make(map[string]*Database),
@@ -54,7 +59,8 @@ func (ctx *DbContext) LoadDbs() error {
 		}
 
 		ctx.dbs[name] = &Database{
-			b: b,
+			b:    b,
+			Name: name,
 		}
 	}
 
@@ -135,7 +141,8 @@ func (ctx *DbContext) CreateDb(name string, inMemory bool) (*Database, error) {
 	}
 
 	ctx.dbs[name] = &Database{
-		b: bdb,
+		b:    bdb,
+		Name: name,
 	}
 
 	return ctx.dbs[name], nil
@@ -157,6 +164,18 @@ func (ctx *DbContext) Close() {
 
 func (ctx *DbContext) Exists(name string) bool {
 	return ctx.dbs[name] != nil
+}
+
+func (ctx *DbContext) List() []*Database {
+	result := make([]*Database, len(ctx.dbs))
+
+	i := 0
+	for _, db := range ctx.dbs {
+		result[0] = db
+		i++
+	}
+
+	return result
 }
 
 func startGCRoutine(ctx *DbContext) {

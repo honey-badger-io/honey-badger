@@ -44,3 +44,21 @@ func (s *DbServer) EnsureDb(ctx context.Context, in *pb.CreateDbReq) (*emptypb.E
 
 	return s.Create(ctx, in)
 }
+
+func (s *DbServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.DbListRes, error) {
+	dbs := s.dbCtx.List()
+	result := make([]*pb.DbListItem, len(dbs))
+
+	for i, db := range dbs {
+		stats := db.Stats()
+
+		result[i] = &pb.DbListItem{
+			Name:     db.Name,
+			InMemory: stats.InMemory,
+		}
+	}
+
+	return &pb.DbListRes{
+		Dbs: result,
+	}, nil
+}
