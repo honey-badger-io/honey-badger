@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/honey-badger-io/honey-badger/cli/commands"
 	"github.com/honey-badger-io/honey-badger/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -33,22 +34,22 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Printf("%s> ", target)
+		fmt.Printf("%s> ", conn.Target())
 		cmdText, _ := reader.ReadString('\n')
 
-		cmd := ParseCommand(context.Background(), strings.Trim(cmdText, "\n"), conn)
+		cmd := commands.Parse(strings.Trim(cmdText, "\n"), conn)
 
 		if cmd == nil {
 			fmt.Println("Invalid command")
 			continue
 		}
 
-		if err := cmd.Run(); err != nil {
+		if err := cmd.Run(context.Background()); err != nil {
 			fmt.Printf("ERR: %v", err)
 			continue
 		}
 
-		timedCmd, ok := cmd.(MeasurableCmd)
+		timedCmd, ok := cmd.(commands.TimedCmd)
 		if ok {
 			fmt.Printf("\nDone in %s\n", timedCmd.Duration())
 		}
