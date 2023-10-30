@@ -16,6 +16,7 @@ import (
 
 var (
 	target string = "127.0.0.1:18950"
+	db     string
 )
 
 func main() {
@@ -34,18 +35,22 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Printf("%s> ", conn.Target())
+		fmt.Printf("%s %s> ", conn.Target(), db)
 		cmdText, _ := reader.ReadString('\n')
 
-		cmd := commands.Parse(strings.Trim(cmdText, "\n"), conn)
+		cmd, err := commands.Parse(strings.Trim(cmdText, "\n"), conn)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			continue
+		}
 
 		if cmd == nil {
 			fmt.Println("Invalid command")
 			continue
 		}
 
-		if err := cmd.Run(context.Background()); err != nil {
-			fmt.Printf("ERR: %v", err)
+		if err := cmd.Run(context.Background(), &db); err != nil {
+			fmt.Printf("%v\n", err)
 			continue
 		}
 

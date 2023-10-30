@@ -171,7 +171,7 @@ func (ctx *DbContext) List() []*Database {
 
 	i := 0
 	for _, db := range ctx.dbs {
-		result[0] = db
+		result[i] = db
 		i++
 	}
 

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -19,7 +20,18 @@ type pingCmd struct {
 	client pb.SysClient
 }
 
-func (cmd *dbListCmd) Run(ctx context.Context) error {
+type useDbCmd struct {
+	client pb.DbClient
+	params []string
+}
+
+type createDbCmd struct {
+	withDuration
+	client pb.DbClient
+	params []string
+}
+
+func (cmd *dbListCmd) Run(ctx context.Context, db *string) error {
 	start := time.Now()
 	res, err := cmd.client.List(ctx, &emptypb.Empty{})
 	if err != nil {
@@ -39,7 +51,7 @@ func (cmd *dbListCmd) Run(ctx context.Context) error {
 	return nil
 }
 
-func (cmd *pingCmd) Run(ctx context.Context) error {
+func (cmd *pingCmd) Run(ctx context.Context, db *string) error {
 	start := time.Now()
 	res, err := cmd.client.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
@@ -49,5 +61,49 @@ func (cmd *pingCmd) Run(ctx context.Context) error {
 
 	fmt.Printf("%s\n", res.Mesage)
 
+	return nil
+}
+
+func (cmd *useDbCmd) Run(ctx context.Context, db *string) error {
+	if len(cmd.params) > 1 {
+		return errors.New("invalid command parameter")
+	}
+
+	res, err := cmd.client.Exists(ctx, &pb.ExistsDbReq{
+		Name: cmd.params[0],
+	})
+	if err != nil {
+		return err
+	}
+
+	if !res.Exists {
+		return errors.New("db does not exists")
+	}
+
+	// Set current db
+	*db = cmd.params[0]
+
+	return nil
+}
+
+func (cmd *createDbCmd) Run(ctx context.Context, db *string) error {
+	options := &pb.CreateDbOpt{
+		InMemory: true,
+	}
+
+	start := time.Now()
+	_, err := cmd.client.Create(ctx, &pb.CreateDbReq{
+		Name: cmd.params[0],
+		Opt:  options,
+	})
+	if err != nil {
+		return err
+	}
+
+	cmd.duration = time.Since(start)
+
+	*db = cmd.params[0]
+
+	fmt.Printf("Db created\n")
 	return nil
 }
