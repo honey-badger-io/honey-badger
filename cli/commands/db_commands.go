@@ -1,9 +1,12 @@
 package commands
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/honey-badger-io/honey-badger/pb"
@@ -26,6 +29,12 @@ type useDbCmd struct {
 }
 
 type createDbCmd struct {
+	withDuration
+	client pb.DbClient
+	params []string
+}
+
+type dropDbCmd struct {
 	withDuration
 	client pb.DbClient
 	params []string
@@ -105,5 +114,34 @@ func (cmd *createDbCmd) Run(ctx context.Context, db *string) error {
 	*db = cmd.params[0]
 
 	fmt.Printf("Db created\n")
+	return nil
+}
+
+func (cmd *dropDbCmd) Run(ctx context.Context, db *string) error {
+	if db == nil || *db == "" {
+		return errors.New("no db selected")
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Printf("Are you sure you want to drop current db? (yes/no)? > ")
+
+	answer, _ := reader.ReadString('\n')
+	answer = strings.Trim(answer, "\n")
+
+	if answer != "yes" {
+		return nil
+	}
+
+	start := time.Now()
+	_, err := cmd.client.Drop(ctx, &pb.DropDbRequest{
+		Name: *db,
+	})
+	if err != nil {
+		return err
+	}
+	cmd.duration = time.Since(start)
+
+	*db = ""
+
 	return nil
 }

@@ -55,7 +55,7 @@ func main() {
 		}
 
 		timedCmd, ok := cmd.(commands.TimedCmd)
-		if ok {
+		if ok && timedCmd.Duration() > 0 {
 			fmt.Printf("\nDone in %s\n", timedCmd.Duration())
 		}
 	}

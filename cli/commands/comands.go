@@ -64,5 +64,12 @@ func Parse(cmdText string, conn *grpc.ClientConn) (Cmd, error) {
 		}, nil
 	}
 
+	if cmdText == "drop" {
+		return &dropDbCmd{
+			client: pb.NewDbClient(conn),
+			params: make([]string, 0),
+		}, nil
+	}
+
 	return nil, nil
 }
