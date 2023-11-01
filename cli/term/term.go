@@ -6,23 +6,65 @@ import (
 	"github.com/pkg/term"
 )
 
+var commandsHistory []string
+var historyPos = -1
+
 func ReadCmd() string {
 	cmdText := ""
 
 	for {
-		ascii, _, _ := getChar()
+		ascii, keyCode, _ := getChar()
 
-		if ascii == 3 { // interupt
-			fmt.Printf("\n")
+		if keyCode == 38 { // arrow up
+			if historyPos == -1 {
+				continue
+			}
+
+			// Clear current buffer
+			for i := 1; i < len(cmdText); i++ {
+				fmt.Printf("\b ")
+				fmt.Printf("\b")
+			}
+
+			cmdText = commandsHistory[historyPos]
+			fmt.Printf("%s", cmdText)
+			historyPos--
+		}
+
+		if keyCode == 40 { // arrow down
+			if historyPos >= len(commandsHistory)-1 {
+				continue
+			}
+
+			// Clear current buffer
+			for i := 1; i < len(cmdText); i++ {
+				fmt.Printf("\b ")
+				fmt.Printf("\b")
+			}
+
+			cmdText = commandsHistory[historyPos+1]
+			fmt.Printf("%s", cmdText)
+			historyPos++
+		}
+
+		if ascii == 3 {
+			fmt.Printf("Interrupt\n")
 			return "quit"
 		}
 
 		if ascii == 13 { // enter key
+			// Push command to history and advance position
+			commandsHistory = append(commandsHistory, cmdText)
+			historyPos++
+
 			fmt.Printf("\n")
 			return cmdText
 		}
 
 		if ascii == 127 { //backspace
+			if cmdText == "" {
+				continue
+			}
 
 			// Clear last character from tty
 			fmt.Printf("\b ")
