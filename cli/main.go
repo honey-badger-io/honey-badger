@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/honey-badger-io/honey-badger/cli/commands"
+	"github.com/honey-badger-io/honey-badger/cli/term"
 	"github.com/honey-badger-io/honey-badger/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -32,11 +31,15 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-
 	for {
 		fmt.Printf("%s %s> ", conn.Target(), db)
-		cmdText, _ := reader.ReadString('\n')
+
+		// Wait for command text
+		cmdText := term.ReadCmd()
+
+		if cmdText == "" {
+			continue
+		}
 
 		cmd, err := commands.Parse(strings.Trim(cmdText, "\n"), conn)
 		if err != nil {
