@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
+	"syscall"
 
 	"github.com/honey-badger-io/honey-badger/cli/commands"
-	"github.com/honey-badger-io/honey-badger/cli/term"
 	"github.com/honey-badger-io/honey-badger/pb"
+	"github.com/manifoldco/promptui"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -17,6 +19,13 @@ var (
 	target string = "127.0.0.1:18950"
 	db     string
 )
+
+var promptTemplates = &promptui.PromptTemplates{
+	Prompt:  "{{ . }}",
+	Valid:   "{{ . }}",
+	Invalid: "{{ . }}",
+	Success: "{{ . }}",
+}
 
 func main() {
 	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -32,10 +41,18 @@ func main() {
 	}
 
 	for {
-		fmt.Printf("%s %s> ", conn.Target(), db)
+		prompt := promptui.Prompt{
+			Label:     fmt.Sprintf("%s %s> ", conn.Target(), db),
+			Templates: promptTemplates,
+		}
 
 		// Wait for command text
-		cmdText := term.ReadCmd()
+		cmdText, err := prompt.Run()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			os.Exit(int(syscall.SIGINT))
+			return
+		}
 
 		if cmdText == "" {
 			continue

@@ -1,15 +1,13 @@
 package commands
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/honey-badger-io/honey-badger/pb"
+	"github.com/manifoldco/promptui"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -122,13 +120,13 @@ func (cmd *dropDbCmd) Run(ctx context.Context, db *string) error {
 		return errors.New("no db selected")
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("Are you sure you want to drop current db? (yes/no)? > ")
+	confirm := promptui.Prompt{
+		Label:     fmt.Sprintf("Drop '%s' db", *db),
+		IsConfirm: true,
+	}
 
-	answer, _ := reader.ReadString('\n')
-	answer = strings.Trim(answer, "\n")
-
-	if answer != "yes" {
+	answer, _ := confirm.Run()
+	if answer != "y" {
 		return nil
 	}
 
