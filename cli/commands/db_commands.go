@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/honey-badger-io/honey-badger/pb"
-	"github.com/manifoldco/promptui"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -118,16 +117,6 @@ func (cmd *createDbCmd) Run(ctx context.Context, db *string) error {
 func (cmd *dropDbCmd) Run(ctx context.Context, db *string) error {
 	if db == nil || *db == "" {
 		return errors.New("no db selected")
-	}
-
-	confirm := promptui.Prompt{
-		Label:     fmt.Sprintf("Drop '%s' db", *db),
-		IsConfirm: true,
-	}
-
-	answer, _ := confirm.Run()
-	if answer != "y" {
-		return nil
 	}
 
 	start := time.Now()

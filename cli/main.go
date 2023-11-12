@@ -3,14 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
-	"os"
 	"strings"
-	"syscall"
 
+	"github.com/chzyer/readline"
 	"github.com/honey-badger-io/honey-badger/cli/commands"
 	"github.com/honey-badger-io/honey-badger/pb"
-	"github.com/manifoldco/promptui"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -19,13 +18,6 @@ var (
 	target string = "127.0.0.1:18950"
 	db     string
 )
-
-var promptTemplates = &promptui.PromptTemplates{
-	Prompt:  "{{ . }}",
-	Valid:   "{{ . }}",
-	Invalid: "{{ . }}",
-	Success: "{{ . }}",
-}
 
 func main() {
 	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -40,25 +32,42 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	l, err := readline.NewEx(&readline.Config{
+		Prompt:          "» ",
+		AutoComplete:    completer,
+		HistoryFile:     "/tmp/hb-cli-history.tmp",
+		InterruptPrompt: "^C",
+		EOFPrompt:       "quit",
+
+		HistorySearchFold: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer l.Close()
+	l.CaptureExitSignal()
+	log.SetOutput(l.Stderr())
+
 	for {
-		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("%s %s> ", conn.Target(), db),
-			Templates: promptTemplates,
+		cmdText, err := l.Readline()
+		if err == readline.ErrInterrupt {
+			break
 		}
 
-		// Wait for command text
-		cmdText, err := prompt.Run()
-		if err != nil {
-			fmt.Printf("%v\n", err)
-			os.Exit(int(syscall.SIGINT))
-			return
+		if err == io.EOF {
+			break
 		}
 
+		cmdText = strings.TrimSpace(cmdText)
 		if cmdText == "" {
 			continue
 		}
 
-		cmd, err := commands.Parse(strings.Trim(cmdText, "\n"), conn)
+		if cmdText == "quit" {
+			break
+		}
+
+		cmd, err := commands.Parse(cmdText, conn)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			continue
@@ -80,3 +89,8 @@ func main() {
 		}
 	}
 }
+
+var completer = readline.NewPrefixCompleter(
+	readline.PcItem("quit"),
+	readline.PcItem("ls"),
+)

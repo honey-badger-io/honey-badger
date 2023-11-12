@@ -2,7 +2,6 @@ package commands
 
 import (
 	"context"
-	"os"
 	"strings"
 	"time"
 
@@ -22,22 +21,11 @@ type withDuration struct {
 	duration time.Duration
 }
 
-type quitCmd struct{}
-
 func (cmd *withDuration) Duration() time.Duration {
 	return cmd.duration
 }
 
-func (cmd *quitCmd) Run(ctx context.Context, db *string) error {
-	os.Exit(0)
-	return nil
-}
-
 func Parse(cmdText string, conn *grpc.ClientConn) (Cmd, error) {
-	if cmdText == "quit" {
-		return &quitCmd{}, nil
-	}
-
 	if cmdText == "ls" {
 		return &dbListCmd{
 			client: pb.NewDbClient(conn),
