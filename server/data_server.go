@@ -2,127 +2,63 @@ package server
 
 import (
 	"context"
-	"errors"
-	"io"
 
 	"github.com/honey-badger-io/honey-badger/db"
-	"github.com/honey-badger-io/honey-badger/pb"
-	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+const (
+	Db0 = "db0"
 )
 
 type DataServer struct {
-	pb.UnimplementedDataServer
-
 	dbCtx *db.DbContext
 }
 
-func (s *DataServer) Set(ctx context.Context, in *pb.SetRequest) (*emptypb.Empty, error) {
-	db, err := s.dbCtx.GetDb(in.Db)
-	if err != nil {
-		return &emptypb.Empty{}, err
-	}
-
-	var ttl uint = 0
-	if in.Ttl != nil {
-		ttl = uint(*in.Ttl)
-	}
-
-	err = db.Set(in.Key, in.Data, ttl)
-	if err != nil {
-		return &emptypb.Empty{}, err
-	}
-
-	return &emptypb.Empty{}, nil
-}
-
-func (s *DataServer) Get(ctx context.Context, in *pb.KeyRequest) (*pb.GetResult, error) {
-	db, err := s.dbCtx.GetDb(in.Db)
-	if err != nil {
-		return nil, err
-	}
-
-	data, hit, err := db.Get(in.Key)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.GetResult{Data: data, Hit: hit}, nil
-}
-
-func (s *DataServer) Delete(ctx context.Context, in *pb.KeyRequest) (*emptypb.Empty, error) {
-	db, err := s.dbCtx.GetDb(in.Db)
-	if err != nil {
-		return &emptypb.Empty{}, err
-	}
-
-	if err := db.DeleteByKey(in.Key); err != nil {
-		return &emptypb.Empty{}, err
-	}
-
-	return &emptypb.Empty{}, nil
-}
-
-func (s *DataServer) DeleteByPrefix(ctx context.Context, in *pb.PrefixRequest) (*emptypb.Empty, error) {
-	db, err := s.dbCtx.GetDb(in.Db)
-	if err != nil {
-		return &emptypb.Empty{}, err
-	}
-
-	if err := db.DeleteByPrefix(in.Prefix); err != nil {
-		return &emptypb.Empty{}, err
-	}
-
-	return &emptypb.Empty{}, nil
-}
-
-func (s *DataServer) CreateReadStream(in *pb.ReadStreamReq, stream pb.Data_CreateReadStreamServer) error {
-	db, err := s.dbCtx.GetDb(in.Db)
+func (s *DataServer) Set(ctx context.Context, key string, data []byte, ttl uint) error {
+	db, err := s.dbCtx.GetDb(Db0)
 	if err != nil {
 		return err
 	}
 
-	if in.Prefix == nil {
-		return nil
+	err = db.Set(key, data, ttl)
+	if err != nil {
+		return err
 	}
 
-	return db.ReadDataByPrefix(stream.Context(), *in.Prefix, stream.Send)
+	return nil
 }
 
-func (s *DataServer) CreateSendStream(stream pb.Data_CreateSendStreamServer) error {
-	dbItem, err := stream.Recv()
+func (s *DataServer) Get(ctx context.Context, key string) ([]byte, bool, error) {
+	db, err := s.dbCtx.GetDb(Db0)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return db.Get(key)
+}
+
+func (s *DataServer) Delete(ctx context.Context, key string) error {
+	db, err := s.dbCtx.GetDb(Db0)
 	if err != nil {
 		return err
 	}
 
-	if dbItem.Db == "" {
-		return errors.New("invalid db: database should be in first message")
+	if err := db.DeleteByKey(key); err != nil {
+		return err
 	}
 
-	db, err := s.dbCtx.GetDb(dbItem.Db)
+	return nil
+}
+
+func (s *DataServer) DeleteByPrefix(ctx context.Context, prefix string) error {
+	db, err := s.dbCtx.GetDb(Db0)
 	if err != nil {
 		return err
 	}
 
-	writer := db.NewWriter()
-	defer writer.Close()
-
-	for {
-		item, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := writer.Write(item.Item); err != nil {
-			return err
-		}
-	}
-
-	if err := writer.Commit(); err != nil {
+	if err := db.DeleteByPrefix(prefix); err != nil {
 		return err
 	}
 
-	return stream.SendAndClose(&emptypb.Empty{})
+	return nil
 }

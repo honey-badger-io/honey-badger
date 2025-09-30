@@ -1,12 +1,9 @@
 package db
 
 import (
-	"context"
-	"fmt"
 	"testing"
 
 	"github.com/honey-badger-io/honey-badger/config"
-	"github.com/honey-badger-io/honey-badger/pb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -93,33 +90,6 @@ func TestDeleteByPrefix(t *testing.T) {
 
 		//res, _ := db.GetByPrefix(context.Background(), "deleteprefix")
 		//assert.Empty(t, res)
-	})
-}
-
-func TestStreamData(t *testing.T) {
-	db := getDb()
-
-	t.Run("should stream data", func(t *testing.T) {
-		const DataLen = 3
-		resultData := make(map[string][]byte)
-		writer := db.NewWriter()
-		defer writer.Close()
-
-		for i := 0; i < DataLen; i++ {
-			writer.Write(&pb.DataItem{
-				Key:  fmt.Sprintf("stream-%d", i+1),
-				Data: make([]byte, 1),
-			})
-		}
-		writer.Commit()
-
-		err := db.ReadDataByPrefix(context.TODO(), "stream-", func(item *pb.DataItem) error {
-			resultData[item.Key] = item.Data
-			return nil
-		})
-
-		assert.Nil(t, err, fmt.Sprintf("%v", err))
-		assert.Equal(t, DataLen, len(resultData))
 	})
 }
 

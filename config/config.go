@@ -12,8 +12,7 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port             uint16
-	MaxRecvMsgSizeMb int
+	Port uint16
 }
 
 type BadgerConfig struct {
@@ -32,8 +31,7 @@ var defaults = Config{
 		GCPeriodMin: 60,
 	},
 	Server: ServerConfig{
-		Port:             18950,
-		MaxRecvMsgSizeMb: 200,
+		Port: 18950,
 	},
 	Logger: LoggerConfig{
 		Sinks: map[string]any{
@@ -75,10 +73,6 @@ func Get() Config {
 func setDefaults(config *Config) {
 	if config.Server.Port <= 1023 {
 		config.Server.Port = defaults.Server.Port
-	}
-
-	if config.Server.MaxRecvMsgSizeMb < 4 {
-		config.Server.MaxRecvMsgSizeMb = defaults.Server.MaxRecvMsgSizeMb
 	}
 
 	if config.Badger.DataDirPath == "" {

@@ -1,18 +1,5 @@
 package bench
 
-import (
-	"context"
-	"fmt"
-	"io"
-	"runtime"
-	"sync"
-	"time"
-
-	"github.com/honey-badger-io/honey-badger/pb"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-)
-
 var (
 	getSetIts = []int{
 		30_000,
@@ -33,6 +20,7 @@ const (
 	BatchItemPrefix = "batch-item"
 )
 
+/*
 func benchSet(client pb.DataClient) {
 	payload := make([]byte, PayloadSize)
 
@@ -172,32 +160,35 @@ func sendGet(index int, client pb.DataClient, limiter <-chan int, wg *sync.WaitG
 	wg.Done()
 	<-limiter
 }
+*/
 
 func Run(target string) {
-	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
+	/*
+		conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			panic(err)
+		}
+		defer conn.Close()
 
-	client := pb.NewDataClient(conn)
-	dbClient := pb.NewDbClient(conn)
+		client := pb.NewDataClient(conn)
+		dbClient := pb.NewDbClient(conn)
 
-	_, err = dbClient.EnsureDb(context.TODO(), &pb.CreateDbReq{
-		Name: DbName,
-		Opt: &pb.CreateDbOpt{
-			InMemory: true,
-		},
-	})
-	if err != nil {
-		panic(err)
-	}
+		_, err = dbClient.EnsureDb(context.TODO(), &pb.CreateDbReq{
+			Name: DbName,
+			Opt: &pb.CreateDbOpt{
+				InMemory: true,
+			},
+		})
+		if err != nil {
+			panic(err)
+		}
 
-	fmt.Printf("os: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	fmt.Printf("cpus: %d\n", runtime.NumCPU())
+		fmt.Printf("os: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("cpus: %d\n", runtime.NumCPU())
 
-	benchSet(client)
-	benchGet(client)
-	benchSendStream(client)
-	benchReadStream(client)
+		benchSet(client)
+		benchGet(client)
+		benchSendStream(client)
+		benchReadStream(client)
+	*/
 }
