@@ -7,7 +7,7 @@ Honey Badger is simple and fast key/value db server build on top of [BadgerDB](h
 
 ## Getting Started
 ### Build server
-To build Honey Badger server you need [Go 1.21](https://go.dev/dl/) or above.
+To build Honey Badger server you need [Go 1.25](https://go.dev/dl/) or above.
 
 Windows users may need to install GNU Make. The best way is to use some package manager like [scoop](https://scoop.sh/#/apps?q=make)
 
