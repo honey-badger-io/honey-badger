@@ -86,8 +86,8 @@ func configFileSink(params any) error {
 	return nil
 }
 
-func (l *Logger) Errorf(format string, v ...interface{}) {
-	l.logMsg("ERROR", format, v...)
+func (l *Logger) Errorf(format string, v ...any) {
+	l.logMsgf("ERROR", format, v...)
 }
 
 func (l *Logger) Error(err error) {
@@ -98,19 +98,25 @@ func (l *Logger) Warning(err error) {
 	l.logMsg("WARN", err.Error())
 }
 
-func (l *Logger) Warningf(format string, v ...interface{}) {
-	l.logMsg("WARN", format, v...)
+func (l *Logger) Warningf(format string, v ...any) {
+	l.logMsgf("WARN", format, v...)
 }
 
-func (l *Logger) Infof(format string, v ...interface{}) {
-	l.logMsg("INFO", format, v...)
+func (l *Logger) Infof(format string, v ...any) {
+	l.logMsgf("INFO", format, v...)
 }
 
-func (l *Logger) Debugf(string, ...interface{}) {}
+func (l *Logger) Debugf(string, ...any) {}
 
-func (l *Logger) logMsg(level string, format string, v ...any) {
+func (l *Logger) logMsgf(level string, format string, v ...any) {
 	for _, sink := range l.sinks {
 		sink.Printf("%s %s: %s", l.src, level, fmt.Sprintf(format, v...))
+	}
+}
+
+func (l *Logger) logMsg(level string, message string) {
+	for _, sink := range l.sinks {
+		sink.Printf("%s %s: %s", l.src, level, message)
 	}
 }
 
