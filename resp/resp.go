@@ -31,7 +31,18 @@ func ParseCmd(reader *bufio.Reader) (commands.RespCmd, error) {
 	cmd = strings.TrimSpace(cmd)
 	cmd = strings.ToUpper(cmd)
 
-	respCmd, err := commands.NewCmd(cmd, numOfStrings-1)
+	args := make([]string, 0)
+
+	for range numOfStrings - 1 {
+		// Read ARG length (not used)
+		_, _ = reader.ReadString('\n')
+		arg, _ := reader.ReadString('\n')
+		arg = strings.TrimSpace(arg)
+
+		args = append(args, arg)
+	}
+
+	respCmd, err := commands.NewCmd(cmd, numOfStrings-1, args)
 	if err != nil {
 		return nil, err
 	}
