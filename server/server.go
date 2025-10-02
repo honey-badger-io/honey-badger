@@ -8,25 +8,27 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/honey-badger-io/honey-badger/config"
 	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/logger"
+	"github.com/honey-badger-io/honey-badger/resp"
+	"github.com/honey-badger-io/honey-badger/resp/common"
 )
 
 type Server struct {
 	logger   *logger.Logger
 	listener net.Listener
 	config   config.ServerConfig
+	dbCtx    *db.DbContext
 }
 
 func New(c config.ServerConfig, dbCtx *db.DbContext) *Server {
 	return &Server{
 		logger: logger.Server(),
 		config: c,
+		dbCtx:  dbCtx,
 	}
 }
 
@@ -45,7 +47,6 @@ func (s *Server) Start() error {
 	s.logger.Infof("Server listening at %v", s.listener.Addr())
 
 	for {
-		// Accept a client connection
 		conn, err := s.listener.Accept()
 
 		if errors.Is(err, net.ErrClosed) {
@@ -53,13 +54,12 @@ func (s *Server) Start() error {
 		}
 
 		if err != nil {
-			fmt.Println("Error accepting connection:", err)
+			s.logger.Error(err)
 			continue
 		}
-		fmt.Println("Client connected:", conn.RemoteAddr())
 
 		// Handle connection in a new goroutine
-		go handleConnection(conn)
+		go handleConnection(s, conn)
 	}
 
 	s.logger.Infof("Server stopped")
@@ -81,61 +81,80 @@ func notifySignal(s *Server) {
 	s.Stop()
 }
 
-func handleConnection(conn net.Conn) {
+func handleConnection(server *Server, conn net.Conn) {
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
 	for {
-		// Read number of strings
-		numberOfStrings, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("Client disconnected:", conn.RemoteAddr())
+		cmd, err := resp.ParseCmd(reader)
+		var respErr common.RespError
+
+		if errors.As(err, &respErr) {
+			_, _ = conn.Write([]byte(respErr.Error()))
+			continue
+		}
+
+		if err != nil && err.Error() == "EOF" {
 			return
 		}
-		numberOfStrings = strings.TrimSpace(numberOfStrings)
-		numberOfStrings = strings.Trim(numberOfStrings, "*")
 
-		n, err := strconv.Atoi(numberOfStrings)
 		if err != nil {
-			_, err = conn.Write([]byte("-ERR invalid initial message\r\n"))
+			respErr = common.NewRespError("server error")
+			_, _ = conn.Write([]byte(respErr.Error()))
+			server.logger.Error(err)
+			return
+		}
+
+		result, err := cmd.Invoke()
+
+		if errors.As(err, &respErr) {
+			_, _ = conn.Write([]byte(respErr.Error()))
 			continue
 		}
 
-		// Read CMD length (not used)
-		_, _ = reader.ReadString('\n')
-
-		// Read command
-		cmd, _ := reader.ReadString('\n')
-		cmd = strings.TrimSpace(cmd)
-		cmd = strings.ToUpper(cmd)
-
-		if cmd == "PING" {
-			_, err = conn.Write([]byte("+PONG\r\n"))
+		if err != nil {
+			respErr = common.NewRespError("server error")
+			_, _ = conn.Write([]byte(respErr.Error()))
+			server.logger.Error(err)
 			continue
 		}
 
-		if cmd == "SET" {
-			numOfSetParams := n - 1
-			if numOfSetParams < 2 {
-				_, err = conn.Write([]byte("-ERR wrong number of arguments for 'set' command\r\n"))
+		_, _ = conn.Write([]byte(result))
+
+		/*
+			if cmd == "PING" {
+				_, err = conn.Write([]byte("+PONG\r\n"))
 				continue
 			}
 
-			// Read KEY length (not used)
-			_, _ = reader.ReadString('\n')
-			key, _ := reader.ReadString('\n')
-			key = strings.TrimSpace(key)
+			if cmd == "SET" {
+				numOfSetParams := n - 1
+				if numOfSetParams < 2 {
+					_, err = conn.Write([]byte("-ERR wrong number of arguments for 'set' command\r\n"))
+					continue
+				}
 
-			// Read DATA length (not used)
-			_, _ = reader.ReadString('\n')
-			data, _ := reader.ReadString('\n')
-			data = strings.TrimSpace(data)
+				if numOfSetParams > 2 {
+					_, err = conn.Write([]byte("-ERR wrong number of arguments for 'set' command\r\n"))
+					continue
+				}
 
-			fmt.Printf("SET %s %s\n", key, data)
-			_, err = conn.Write([]byte("+OK\r\n"))
-			continue
-		}
+				// Read KEY length (not used)
+				_, _ = reader.ReadString('\n')
+				key, _ := reader.ReadString('\n')
+				key = strings.TrimSpace(key)
 
-		_, err = conn.Write([]byte("-ERR unknown command\r\n"))
+				// Read DATA length (not used)
+				_, _ = reader.ReadString('\n')
+				data, _ := reader.ReadString('\n')
+				data = strings.TrimSpace(data)
+
+				fmt.Printf("SET %s %s\n", key, data)
+				_, err = conn.Write([]byte("+OK\r\n"))
+				continue
+			}
+
+			_, err = conn.Write([]byte("-ERR unknown command\r\n"))
+		*/
 	}
 }
