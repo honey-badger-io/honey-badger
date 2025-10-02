@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"net"
@@ -14,14 +13,14 @@ import (
 	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/logger"
 	"github.com/honey-badger-io/honey-badger/resp"
-	"github.com/honey-badger-io/honey-badger/resp/common"
 )
 
 type Server struct {
-	logger   *logger.Logger
-	listener net.Listener
-	config   config.ServerConfig
-	dbCtx    *db.DbContext
+	logger    *logger.Logger
+	listener  net.Listener
+	config    config.ServerConfig
+	dbCtx     *db.DbContext
+	connCount int
 }
 
 func New(c config.ServerConfig, dbCtx *db.DbContext) *Server {
@@ -58,8 +57,10 @@ func (s *Server) Start() error {
 			continue
 		}
 
-		// Handle connection in a new goroutine
-		go handleConnection(s, conn)
+		s.connCount++
+
+		respSession := resp.NewSession(s.connCount, conn, s.logger, s.dbCtx)
+		go respSession.Handle()
 	}
 
 	s.logger.Infof("Server stopped")
@@ -79,46 +80,4 @@ func notifySignal(s *Server) {
 	s.logger.Infof("%s", sig)
 
 	s.Stop()
-}
-
-func handleConnection(server *Server, conn net.Conn) {
-	defer conn.Close()
-
-	reader := bufio.NewReader(conn)
-	for {
-		cmd, err := resp.ParseCmd(reader)
-		var respErr common.RespError
-
-		if errors.As(err, &respErr) {
-			_, _ = conn.Write([]byte(respErr.Error()))
-			continue
-		}
-
-		if err != nil && err.Error() == "EOF" {
-			return
-		}
-
-		if err != nil {
-			respErr = common.NewRespError("server error")
-			_, _ = conn.Write([]byte(respErr.Error()))
-			server.logger.Error(err)
-			return
-		}
-
-		result, err := cmd.Invoke(server.dbCtx)
-
-		if errors.As(err, &respErr) {
-			_, _ = conn.Write([]byte(respErr.Error()))
-			continue
-		}
-
-		if err != nil {
-			respErr = common.NewRespError("server error")
-			_, _ = conn.Write([]byte(respErr.Error()))
-			server.logger.Error(err)
-			continue
-		}
-
-		_, _ = conn.Write([]byte(result))
-	}
 }

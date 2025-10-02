@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/resp/common"
 )
 
@@ -12,7 +11,7 @@ type getCmd struct {
 
 const cmdGet = "GET"
 
-func (cmd *getCmd) Invoke(dbCtx *db.DbContext) (common.RespResult, error) {
+func (cmd *getCmd) Invoke(session common.Session) (common.RespResult, error) {
 	// GET requires exactly 1 argument: key
 	if cmd.numOfArgs != 1 {
 		return common.ResultNull, common.NewRespErrorf("wrong number of arguments for 'get' command")
@@ -21,7 +20,7 @@ func (cmd *getCmd) Invoke(dbCtx *db.DbContext) (common.RespResult, error) {
 	key := cmd.args[0]
 
 	// Get the database
-	database, err := dbCtx.GetDefaultDb()
+	database, err := session.Db().GetDefaultDb()
 	if err != nil {
 		return common.ResultNull, common.NewRespError("database not found")
 	}

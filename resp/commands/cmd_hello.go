@@ -3,7 +3,6 @@ package commands
 import (
 	"strconv"
 
-	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/resp/common"
 )
 
@@ -15,7 +14,7 @@ type helloCmd struct {
 const defaultProto = 3
 const cmdHello = "HELLO"
 
-func (cmd *helloCmd) Invoke(dbCtx *db.DbContext) (common.RespResult, error) {
+func (cmd *helloCmd) Invoke(session common.Session) (common.RespResult, error) {
 	proto := defaultProto
 	var err error
 
@@ -40,7 +39,7 @@ func (cmd *helloCmd) Invoke(dbCtx *db.DbContext) (common.RespResult, error) {
 	data["proto"] = proto
 	data["mode"] = "standalone"
 	data["role"] = "master"
-	data["id"] = 0 //TODO: Connection id
+	data["id"] = session.Id()
 
 	return common.NewResultMap(data), nil
 }

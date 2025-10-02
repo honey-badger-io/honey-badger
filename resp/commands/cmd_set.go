@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/resp/common"
 )
 
@@ -15,7 +14,7 @@ type setCmd struct {
 
 const cmdSet = "SET"
 
-func (cmd *setCmd) Invoke(dbCtx *db.DbContext) (common.RespResult, error) {
+func (cmd *setCmd) Invoke(session common.Session) (common.RespResult, error) {
 	// SET requires at least 2 arguments: key and value
 	if cmd.numOfArgs < 2 {
 		return common.ResultNull, common.NewRespErrorf("wrong number of arguments for 'set' command")
@@ -54,7 +53,7 @@ func (cmd *setCmd) Invoke(dbCtx *db.DbContext) (common.RespResult, error) {
 	}
 
 	// Get the database
-	database, err := dbCtx.GetDefaultDb()
+	database, err := session.Db().GetDefaultDb()
 	if err != nil {
 		return common.ResultNull, common.NewRespError("database not found")
 	}
