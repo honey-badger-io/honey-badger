@@ -7,9 +7,14 @@ import (
 type RespResult string
 
 const ResultNull RespResult = "_\r\n"
+const ResultOk RespResult = "+OK\r\n"
 
 func NewResultString(data string) RespResult {
 	return RespResult(fmt.Sprintf("+%s\r\n", data))
+}
+
+func NewResultBulkString(data string) RespResult {
+	return RespResult(fmt.Sprintf("$%d\r\n%s\r\n", len(data), data))
 }
 
 func NewResultMap(data map[string]any) RespResult {

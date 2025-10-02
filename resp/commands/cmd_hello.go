@@ -3,6 +3,7 @@ package commands
 import (
 	"strconv"
 
+	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/resp/common"
 )
 
@@ -14,7 +15,7 @@ type helloCmd struct {
 const defaultProto = 3
 const cmdHello = "HELLO"
 
-func (cmd *helloCmd) Invoke() (common.RespResult, error) {
+func (cmd *helloCmd) Invoke(dbCtx *db.DbContext) (common.RespResult, error) {
 	proto := defaultProto
 	var err error
 

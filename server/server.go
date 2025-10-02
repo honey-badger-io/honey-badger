@@ -105,7 +105,7 @@ func handleConnection(server *Server, conn net.Conn) {
 			return
 		}
 
-		result, err := cmd.Invoke()
+		result, err := cmd.Invoke(server.dbCtx)
 
 		if errors.As(err, &respErr) {
 			_, _ = conn.Write([]byte(respErr.Error()))
@@ -120,41 +120,5 @@ func handleConnection(server *Server, conn net.Conn) {
 		}
 
 		_, _ = conn.Write([]byte(result))
-
-		/*
-			if cmd == "PING" {
-				_, err = conn.Write([]byte("+PONG\r\n"))
-				continue
-			}
-
-			if cmd == "SET" {
-				numOfSetParams := n - 1
-				if numOfSetParams < 2 {
-					_, err = conn.Write([]byte("-ERR wrong number of arguments for 'set' command\r\n"))
-					continue
-				}
-
-				if numOfSetParams > 2 {
-					_, err = conn.Write([]byte("-ERR wrong number of arguments for 'set' command\r\n"))
-					continue
-				}
-
-				// Read KEY length (not used)
-				_, _ = reader.ReadString('\n')
-				key, _ := reader.ReadString('\n')
-				key = strings.TrimSpace(key)
-
-				// Read DATA length (not used)
-				_, _ = reader.ReadString('\n')
-				data, _ := reader.ReadString('\n')
-				data = strings.TrimSpace(data)
-
-				fmt.Printf("SET %s %s\n", key, data)
-				_, err = conn.Write([]byte("+OK\r\n"))
-				continue
-			}
-
-			_, err = conn.Write([]byte("-ERR unknown command\r\n"))
-		*/
 	}
 }
