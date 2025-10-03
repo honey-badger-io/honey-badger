@@ -19,14 +19,8 @@ func (cmd *getCmd) Invoke(session common.Session) (common.RespResult, error) {
 
 	key := cmd.args[0]
 
-	// Get the database
-	database, err := session.Db().GetDefaultDb()
-	if err != nil {
-		return common.ResultNull, common.NewRespError("database not found")
-	}
-
 	// Get the value
-	value, exists, err := database.Get(key)
+	value, exists, err := session.Db().Get(key)
 	if err != nil {
 		return common.ResultNull, common.NewRespError("server error")
 	}

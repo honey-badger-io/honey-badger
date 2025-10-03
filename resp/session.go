@@ -23,8 +23,15 @@ func (s *Session) Id() int {
 	return s.id
 }
 
-func (s *Session) Db() *db.DbContext {
-	return s.dbCtx
+func (s *Session) Db() *db.Database {
+	database, err := s.dbCtx.GetDefaultDb()
+
+	// There should be default database. If not then something went wrong
+	if err != nil {
+		panic(err)
+	}
+
+	return database
 }
 
 func (s *Session) ServerVersion() string {

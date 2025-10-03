@@ -52,15 +52,8 @@ func (cmd *setCmd) Invoke(session common.Session) (common.RespResult, error) {
 		}
 	}
 
-	// Get the database
-	database, err := session.Db().GetDefaultDb()
-	if err != nil {
-		return common.ResultNull, common.NewRespError("database not found")
-	}
-
 	// Set the key-value pair
-	err = database.Set(key, []byte(value), ttl)
-	if err != nil {
+	if err := session.Db().Set(key, []byte(value), ttl); err != nil {
 		return common.ResultNull, common.NewRespError("server error")
 	}
 

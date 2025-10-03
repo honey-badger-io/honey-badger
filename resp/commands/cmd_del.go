@@ -17,16 +17,10 @@ func (cmd *delCmd) Invoke(session common.Session) (common.RespResult, error) {
 		return common.ResultNull, common.NewRespErrorf("wrong number of arguments for 'del' command")
 	}
 
-	// Get the database
-	database, err := session.Db().GetDefaultDb()
-	if err != nil {
-		return common.ResultNull, common.NewRespError("database not found")
-	}
-
 	// Delete each key and count successful deletions
 	deletedCount := 0
 	for _, key := range cmd.args {
-		if err := database.DeleteByKey(key); err != nil {
+		if err := session.Db().DeleteByKey(key); err != nil {
 			// Log error but continue with other keys
 			continue
 		}
