@@ -12,10 +12,11 @@ import (
 )
 
 type Session struct {
-	id     int
-	logger *logger.Logger
-	dbCtx  *db.DbContext
-	conn   net.Conn
+	id            int
+	logger        *logger.Logger
+	dbCtx         *db.DbContext
+	conn          net.Conn
+	serverVersion string
 }
 
 func (s *Session) Id() int {
@@ -24,6 +25,10 @@ func (s *Session) Id() int {
 
 func (s *Session) Db() *db.DbContext {
 	return s.dbCtx
+}
+
+func (s *Session) ServerVersion() string {
+	return s.serverVersion
 }
 
 func (s *Session) Handle() {
@@ -68,11 +73,12 @@ func (s *Session) Handle() {
 	}
 }
 
-func NewSession(id int, conn net.Conn, logger *logger.Logger, dbCtx *db.DbContext) *Session {
+func NewSession(id int, conn net.Conn, logger *logger.Logger, dbCtx *db.DbContext, serverVersion string) *Session {
 	return &Session{
-		id:     id,
-		conn:   conn,
-		logger: logger,
-		dbCtx:  dbCtx,
+		id:            id,
+		conn:          conn,
+		logger:        logger,
+		dbCtx:         dbCtx,
+		serverVersion: serverVersion,
 	}
 }

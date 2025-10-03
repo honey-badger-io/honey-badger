@@ -21,13 +21,15 @@ type Server struct {
 	config    config.ServerConfig
 	dbCtx     *db.DbContext
 	connCount int
+	version   string
 }
 
-func New(c config.ServerConfig, dbCtx *db.DbContext) *Server {
+func New(c config.ServerConfig, dbCtx *db.DbContext, version string) *Server {
 	return &Server{
-		logger: logger.Server(),
-		config: c,
-		dbCtx:  dbCtx,
+		logger:  logger.Server(),
+		config:  c,
+		dbCtx:   dbCtx,
+		version: version,
 	}
 }
 
@@ -59,7 +61,7 @@ func (s *Server) Start() error {
 
 		s.connCount++
 
-		respSession := resp.NewSession(s.connCount, conn, s.logger, s.dbCtx)
+		respSession := resp.NewSession(s.connCount, conn, s.logger, s.dbCtx, s.version)
 		go respSession.Handle()
 	}
 

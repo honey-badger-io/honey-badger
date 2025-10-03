@@ -46,13 +46,12 @@ func main() {
 	dbCtx := db.CreateCtx(config.Get().Badger)
 	defer dbCtx.Close()
 
-	server := server.New(config.Get().Server, dbCtx)
-
 	if err := dbCtx.LoadDbs(); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := server.Start(); err != nil {
+	srv := server.New(config.Get().Server, dbCtx, getVersion())
+	if err := srv.Start(); err != nil {
 		log.Fatal(err)
 	}
 }

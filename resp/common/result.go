@@ -6,15 +6,17 @@ import (
 
 type RespResult string
 
-const ResultNull RespResult = "_\r\n"
-const ResultOk RespResult = "+OK\r\n"
+const (
+	ResultNull RespResult = "_\r\n"
+	ResultOk RespResult = "+OK\r\n"
+)
 
 func NewResultString(data string) RespResult {
-	return RespResult(fmt.Sprintf("+%s\r\n", data))
+	return RespResult(serializeString(data))
 }
 
 func NewResultBulkString(data string) RespResult {
-	return RespResult(fmt.Sprintf("$%d\r\n%s\r\n", len(data), data))
+	return RespResult(serializeBulkString(data))
 }
 
 func NewResultMap(data map[string]any) RespResult {
@@ -22,18 +24,28 @@ func NewResultMap(data map[string]any) RespResult {
 
 	for k, v := range data {
 		// Serialize key
-		result += fmt.Sprintf("+%s\r\n", k)
+		result += serializeString(k)
 
 		// Serialize value
 		switch v.(type) {
 		case int:
-			result += fmt.Sprintf(":%d\r\n", v)
-		case string:
-			result += fmt.Sprintf("+%s\r\n", v)
+			result += serializeInt(v.(int))
 		default:
-			result += fmt.Sprintf("+%v\r\n", v)
+			result += serializeBulkString(fmt.Sprintf("%v", v))
 		}
 	}
 
 	return RespResult(result)
+}
+
+func serializeBulkString(data string) string {
+	return fmt.Sprintf("$%d\r\n%s\r\n", len(data), data)
+}
+
+func serializeString(data string) string {
+	return fmt.Sprintf("+%s\r\n", data)
+}
+
+func serializeInt(data int) string {
+	return fmt.Sprintf(":%d\r\n", data)
 }

@@ -35,7 +35,7 @@ func (cmd *helloCmd) Invoke(session common.Session) (common.RespResult, error) {
 
 	data := make(map[string]any)
 	data["server"] = "honey-badger"
-	data["version"] = "0.0.1"
+	data["version"] = session.ServerVersion()
 	data["proto"] = proto
 	data["mode"] = "standalone"
 	data["role"] = "master"
