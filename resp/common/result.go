@@ -19,6 +19,10 @@ func NewResultBulkString(data string) RespResult {
 	return RespResult(serializeBulkString(data))
 }
 
+func NewResultInteger(data int) RespResult {
+	return RespResult(serializeInt(data))
+}
+
 func NewResultMap(data map[string]any) RespResult {
 	result := fmt.Sprintf("%%%d\r\n", len(data))
 
