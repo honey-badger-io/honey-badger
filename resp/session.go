@@ -15,6 +15,7 @@ type Session struct {
 	id            int
 	logger        *logger.Logger
 	dbCtx         *db.DbContext
+	db            *db.Database
 	conn          net.Conn
 	serverVersion string
 }
@@ -32,6 +33,10 @@ func (s *Session) Db() *db.Database {
 	}
 
 	return database
+}
+
+func (s *Session) SetDb(index int) error {
+
 }
 
 func (s *Session) ServerVersion() string {

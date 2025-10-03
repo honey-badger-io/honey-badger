@@ -87,5 +87,12 @@ func newCmd(cmd string, numOfArguments int, args []string) (RespCmd, error) {
 		}, nil
 	}
 
+	if cmd == cmdSelect {
+		return &selectCmd{
+			numOfArgs: numOfArguments,
+			args:      args,
+		}, nil
+	}
+
 	return nil, common.NewRespError("unknown command")
 }

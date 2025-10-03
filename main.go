@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/honey-badger-io/honey-badger/bench"
 	"github.com/honey-badger-io/honey-badger/config"
 	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/logger"
@@ -14,24 +13,17 @@ import (
 
 var (
 	configPath   string
-	benchTarget  string
 	printVersion bool
 	version      string
 )
 
 func main() {
 	flag.StringVar(&configPath, "config", "", "-config <path_to_config_file>")
-	flag.StringVar(&benchTarget, "bench", "", "-bench 127.0.0.1:18950")
 	flag.BoolVar(&printVersion, "version", false, "-version")
 	flag.Parse()
 
 	if printVersion {
 		fmt.Printf("%s\n", getVersion())
-		return
-	}
-
-	if benchTarget != "" {
-		bench.Run(benchTarget)
 		return
 	}
 
