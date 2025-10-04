@@ -25,6 +25,9 @@ type Server struct {
 }
 
 func New(c config.ServerConfig, dbCtx *db.DbContext, version string) *Server {
+	//https://dgraph.io/docs/badger/faq/#are-there-any-go-specific-settings-that-i-should-use
+	runtime.GOMAXPROCS(128)
+
 	return &Server{
 		logger:  logger.Server(),
 		config:  c,
@@ -39,9 +42,6 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
-
-	//https://dgraph.io/docs/badger/faq/#are-there-any-go-specific-settings-that-i-should-use
-	runtime.GOMAXPROCS(128)
 
 	go notifySignal(s)
 

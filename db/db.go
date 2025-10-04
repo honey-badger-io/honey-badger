@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -17,6 +18,7 @@ type DbContext struct {
 	gcTicker *time.Ticker
 	config   config.BadgerConfig
 	logger   *logger.Logger
+	mu       sync.Mutex
 }
 
 func CreateCtx(c config.BadgerConfig) *DbContext {
@@ -65,10 +67,6 @@ func (ctx *DbContext) LoadDbs() error {
 	return nil
 }
 
-func (ctx *DbContext) GetDb(name string) *Database {
-	return ctx.dbs[name]
-}
-
 func (ctx *DbContext) DropDb(name string) error {
 	db := ctx.dbs[name]
 	if db == nil {
@@ -100,13 +98,16 @@ func (ctx *DbContext) DropDb(name string) error {
 	return nil
 }
 
-func (ctx *DbContext) CreateDb(name string, inMemory bool) (*Database, error) {
+func (ctx *DbContext) GetOrCreateDb(name string, inMemory bool) (*Database, error) {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+
 	if name == "" {
 		return nil, errors.New("'name' cannot be empty")
 	}
 
 	if ctx.dbs[name] != nil {
-		return nil, errors.New("Db already exists")
+		return ctx.dbs[name], nil
 	}
 
 	var opt badger.Options
@@ -148,10 +149,6 @@ func (ctx *DbContext) Close() {
 			ctx.logger.Error(err)
 		}
 	}
-}
-
-func (ctx *DbContext) Exists(name string) bool {
-	return ctx.dbs[name] != nil
 }
 
 func startGCRoutine(ctx *DbContext) {

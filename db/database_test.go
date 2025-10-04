@@ -96,7 +96,7 @@ func TestDeleteByPrefix(t *testing.T) {
 func getDb() *Database {
 	ctx := CreateCtx(config.BadgerConfig{})
 
-	db, err := ctx.CreateDb("test", true)
+	db, err := ctx.GetOrCreateDb("test", true)
 	if err != nil {
 		panic(err)
 

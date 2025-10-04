@@ -42,13 +42,8 @@ func (s *Session) SetDb(index int) error {
 	dbName := fmt.Sprintf("db%d", index)
 	const inMemory = true
 
-	if s.dbCtx.Exists(dbName) {
-		s.db = s.dbCtx.GetDb(dbName)
-		return nil
-	}
-
 	var err error
-	s.db, err = s.dbCtx.CreateDb(dbName, inMemory)
+	s.db, err = s.dbCtx.GetOrCreateDb(dbName, inMemory)
 
 	return err
 }
