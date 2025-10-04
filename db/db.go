@@ -12,10 +12,6 @@ import (
 	"github.com/honey-badger-io/honey-badger/logger"
 )
 
-const (
-	defaultDb = "db0"
-)
-
 type DbContext struct {
 	dbs      map[string]*Database
 	gcTicker *time.Ticker
@@ -62,13 +58,6 @@ func (ctx *DbContext) LoadDbs() error {
 		}
 	}
 
-	// Ensure default database exists
-	if !ctx.Exists(defaultDb) {
-		if _, err := ctx.CreateDb(defaultDb, true); err != nil {
-			return err
-		}
-	}
-
 	ctx.gcTicker = time.NewTicker(time.Duration(ctx.config.GCPeriodMin) * time.Minute)
 
 	startGCRoutine(ctx)
@@ -76,17 +65,8 @@ func (ctx *DbContext) LoadDbs() error {
 	return nil
 }
 
-func (ctx *DbContext) GetDb(name string) (*Database, error) {
-	db := ctx.dbs[name]
-	if db == nil {
-		return nil, errors.New("db does not exists")
-	}
-
-	return ctx.dbs[name], nil
-}
-
-func (ctx *DbContext) GetDefaultDb() (*Database, error) {
-	return ctx.GetDb(defaultDb)
+func (ctx *DbContext) GetDb(name string) *Database {
+	return ctx.dbs[name]
 }
 
 func (ctx *DbContext) DropDb(name string) error {

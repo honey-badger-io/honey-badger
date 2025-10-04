@@ -3,6 +3,7 @@ package resp
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/honey-badger-io/honey-badger/db"
@@ -25,18 +26,30 @@ func (s *Session) Id() int {
 }
 
 func (s *Session) Db() *db.Database {
-	database, err := s.dbCtx.GetDefaultDb()
+	if s.db != nil {
+		return s.db
+	}
 
-	// There should be default database. If not then something went wrong
-	if err != nil {
+	if err := s.SetDb(0); err != nil {
 		panic(err)
 	}
 
-	return database
+	return s.db
 }
 
 func (s *Session) SetDb(index int) error {
+	dbName := fmt.Sprintf("db%d", index)
+	const inMemory = true
 
+	if s.dbCtx.Exists(dbName) {
+		s.db = s.dbCtx.GetDb(dbName)
+		return nil
+	}
+
+	var err error
+	s.db, err = s.dbCtx.CreateDb(dbName, inMemory)
+
+	return err
 }
 
 func (s *Session) ServerVersion() string {
