@@ -2,6 +2,7 @@ package commands
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/honey-badger-io/honey-badger/resp/common"
 )
@@ -30,7 +31,17 @@ func (cmd *helloCmd) Invoke(session common.Session) (common.RespResult, error) {
 	}
 
 	if cmd.numOfArgs > 1 {
-		return common.ResultNull, common.NewRespErrorf("Syntax error in HELLO option '%s'", cmd.args[1])
+		setName := strings.ToUpper(strings.TrimSpace(cmd.args[1]))
+
+		if setName != "SETNAME" {
+			return common.ResultNull, common.NewRespErrorf("Syntax error in HELLO option '%s'", cmd.args[1])
+		}
+
+		if cmd.numOfArgs != 3 {
+			return common.ResultNull, common.NewRespErrorf("Syntax error in HELLO option '%s'", cmd.args[1])
+		}
+
+		session.SetName(cmd.args[2])
 	}
 
 	data := make(map[string]any)

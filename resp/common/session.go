@@ -7,4 +7,5 @@ type Session interface {
 	Db() *db.Database
 	SetDb(index int) error
 	ServerVersion() string
+	SetName(name string)
 }

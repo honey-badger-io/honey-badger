@@ -19,6 +19,7 @@ type Session struct {
 	db            *db.Database
 	conn          net.Conn
 	serverVersion string
+	name          string
 }
 
 func (s *Session) Id() int {
@@ -50,6 +51,10 @@ func (s *Session) SetDb(index int) error {
 	s.db, err = s.dbCtx.CreateDb(dbName, inMemory)
 
 	return err
+}
+
+func (s *Session) SetName(name string) {
+	s.name = name
 }
 
 func (s *Session) ServerVersion() string {
