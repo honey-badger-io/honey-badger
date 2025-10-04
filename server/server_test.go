@@ -14,14 +14,16 @@ import (
 func TestServer(t *testing.T) {
 	var ctx = context.Background()
 	server, client := startServer(ctx)
-	defer server.Stop()
-	defer client.Close()
+	conn := client.Conn()
+
+	defer conn.Close()
+	defer server.dbCtx.Close()
 
 	t.Run("should call set", func(t *testing.T) {
 		const key = "key"
 		const value = "value"
 
-		err := client.Set(ctx, key, value, 0).Err()
+		err := conn.Set(ctx, key, value, 0).Err()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 	})
@@ -30,7 +32,7 @@ func TestServer(t *testing.T) {
 		const key = "key"
 		const value = "value"
 
-		val, err := client.Get(ctx, key).Result()
+		val, err := conn.Get(ctx, key).Result()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 		assert.Equal(t, value, val)
@@ -39,26 +41,26 @@ func TestServer(t *testing.T) {
 	t.Run("should call delete", func(t *testing.T) {
 		const key = "key"
 
-		err := client.Del(ctx, key).Err()
+		err := conn.Del(ctx, key).Err()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 	})
 
 	t.Run("should call select", func(t *testing.T) {
-		err := client.Conn().Select(ctx, 1).Err()
+		err := conn.Select(ctx, 1).Err()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 	})
 
 	t.Run("should call ping", func(t *testing.T) {
-		val, err := client.Ping(ctx).Result()
+		val, err := conn.Ping(ctx).Result()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 		assert.Equal(t, "PONG", val)
 	})
 
 	t.Run("should call hello with empty name", func(t *testing.T) {
-		val, err := client.Conn().Hello(ctx, 3, "", "", "").Result()
+		val, err := conn.Hello(ctx, 3, "", "", "").Result()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 		assert.Equal(t, "honey-badger", val["server"])
@@ -71,9 +73,26 @@ func TestServer(t *testing.T) {
 
 	t.Run("should call hello with name", func(t *testing.T) {
 		const connectionName = "test"
-		err := client.Conn().Hello(ctx, 3, "", "", connectionName).Err()
+		err := conn.Hello(ctx, 3, "", "", connectionName).Err()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
+	})
+
+	t.Run("should call client setname", func(t *testing.T) {
+		const connectionName = "test1"
+		err := conn.ClientSetName(ctx, connectionName).Err()
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+	})
+
+	t.Run("should call client getname", func(t *testing.T) {
+		const connectionName = "test1"
+
+		conn.ClientSetName(ctx, connectionName).Err()
+		val, err := conn.ClientGetName(ctx).Result()
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.Equal(t, connectionName, val)
 	})
 }
 

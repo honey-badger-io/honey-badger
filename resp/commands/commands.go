@@ -94,5 +94,12 @@ func newCmd(cmd string, numOfArguments int, args []string) (RespCmd, error) {
 		}, nil
 	}
 
+	if cmd == cmdClient {
+		return &clientCmd{
+			numOfArgs: numOfArguments,
+			args:      args,
+		}, nil
+	}
+
 	return nil, common.NewRespError("unknown command")
 }

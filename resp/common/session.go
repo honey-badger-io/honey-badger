@@ -5,6 +5,7 @@ import "github.com/honey-badger-io/honey-badger/db"
 type Session interface {
 	Id() int
 	Db() *db.Database
+	Name() string
 	SetDb(index int) error
 	ServerVersion() string
 	SetName(name string)

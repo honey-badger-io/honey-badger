@@ -57,6 +57,10 @@ func (s *Session) SetName(name string) {
 	s.name = name
 }
 
+func (s *Session) Name() string {
+	return s.name
+}
+
 func (s *Session) ServerVersion() string {
 	return s.serverVersion
 }
@@ -82,7 +86,7 @@ func (s *Session) Handle() {
 			respErr = common.NewRespError("server error")
 			_, _ = s.conn.Write([]byte(respErr.Error()))
 			s.logger.Error(err)
-			return
+			continue
 		}
 
 		result, err := cmd.Invoke(s)
