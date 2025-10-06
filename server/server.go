@@ -65,7 +65,7 @@ func (s *Server) Start() error {
 
 		s.connCount++
 
-		respSession := resp.NewSession(s.connCount, conn, s.logger, db0, s.version)
+		respSession := resp.NewSession(s.connCount, conn, db0, s.version)
 		go respSession.Handle()
 	}
 

@@ -15,7 +15,6 @@ import (
 
 type Session struct {
 	id            int
-	logger        *logger.Logger
 	db            *db.Database
 	conn          net.Conn
 	serverVersion string
@@ -76,7 +75,7 @@ func (s *Session) Handle() {
 		if err != nil {
 			respErr = common.NewRespError("server error")
 			_, _ = s.conn.Write([]byte(respErr.Error()))
-			s.logger.Error(err)
+			logger.Server().Error(err)
 			continue
 		}
 
@@ -90,7 +89,7 @@ func (s *Session) Handle() {
 		if err != nil {
 			respErr = common.NewRespError("server error")
 			_, _ = s.conn.Write([]byte(respErr.Error()))
-			s.logger.Error(err)
+			logger.Server().Error(err)
 			continue
 		}
 
@@ -98,11 +97,10 @@ func (s *Session) Handle() {
 	}
 }
 
-func NewSession(id int, conn net.Conn, logger *logger.Logger, db *db.Database, serverVersion string) *Session {
+func NewSession(id int, conn net.Conn, db *db.Database, serverVersion string) *Session {
 	return &Session{
 		id:            id,
 		conn:          conn,
-		logger:        logger,
 		db:            db,
 		serverVersion: serverVersion,
 	}
