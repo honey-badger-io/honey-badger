@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"path"
 	"sync"
 	"time"
@@ -55,14 +54,13 @@ func OpenDb(name string, inMemory bool) (*Database, error) {
 func CloseAllDbs() {
 	if gcTicker != nil {
 		gcTicker.Stop()
-		//logger.Infof("GC ticker closed")
+		logger.Badger().Infof("GC ticker closed")
 	}
 
 	for name, db := range dbs {
-		//ctx.logger.Infof("Closing database '%s'", name)
-		fmt.Printf("Closing database '%s'", name)
+		logger.Badger().Infof("Closing database '%s'", name)
 		if err := db.b.Close(); err != nil {
-			//ctx.logger.Error(err)
+			logger.Badger().Error(err)
 		}
 	}
 }
@@ -73,7 +71,7 @@ func StartGCRoutine() {
 
 	gcTicker = time.NewTicker(time.Duration(config.GCPeriodMin) * time.Minute)
 	gcTicker.Reset(period)
-	//ctx.logger.Infof("GC tick set to: %v\n", period)
+	logger.Badger().Infof("GC tick set to: %v\n", period)
 
 	go func() {
 		for range gcTicker.C {
@@ -83,11 +81,10 @@ func StartGCRoutine() {
 					continue
 				}
 
-				//ctx.logger.Infof("Running GC on database '%s'...", name)
-				fmt.Printf("Running GC on database '%s'...", name)
+				logger.Badger().Infof("Running GC on database '%s'...", name)
 				err := itm.b.RunValueLogGC(0.5)
 				if err != nil {
-					//ctx.logger.Warning(err)
+					logger.Badger().Warning(err)
 				}
 			}
 		}
