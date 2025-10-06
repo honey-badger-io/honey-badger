@@ -13,11 +13,11 @@ import (
 
 func TestServer(t *testing.T) {
 	var ctx = context.Background()
-	server, client := startServer(ctx)
+	_, client := startServer(ctx)
 	conn := client.Conn()
 
 	defer conn.Close()
-	defer server.dbCtx.Close()
+	defer db.CloseAllDbs()
 
 	t.Run("should call set", func(t *testing.T) {
 		const key = "key"
@@ -104,13 +104,9 @@ func startServer(ctx context.Context) (*Server, *redis.Client) {
 		DB:       0,  // use default DB
 	})
 
-	dbCtx := db.CreateCtx(config.BadgerConfig{
-		DataDirPath: "data",
-		GCPeriodMin: 60,
-	})
 	server := New(config.ServerConfig{
 		Port: uint16(port),
-	}, dbCtx, "0.0.0")
+	}, "0.0.0")
 
 	go server.Start()
 

@@ -3,7 +3,6 @@ package db
 import (
 	"testing"
 
-	"github.com/honey-badger-io/honey-badger/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -94,13 +93,11 @@ func TestDeleteByPrefix(t *testing.T) {
 }
 
 func getDb() *Database {
-	ctx := CreateCtx(config.BadgerConfig{})
-
-	db, err := ctx.GetOrCreateDb("test", true)
+	db0, err := OpenDb("test", true)
 	if err != nil {
 		panic(err)
 
 	}
 
-	return db
+	return db0
 }
