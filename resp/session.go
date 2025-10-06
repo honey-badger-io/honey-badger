@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime"
 
 	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/logger"
@@ -15,7 +16,6 @@ import (
 type Session struct {
 	id            int
 	logger        *logger.Logger
-	dbCtx         *db.DbContext
 	db            *db.Database
 	conn          net.Conn
 	serverVersion string
@@ -27,14 +27,7 @@ func (s *Session) Id() int {
 }
 
 func (s *Session) Db() *db.Database {
-	if s.db != nil {
-		return s.db
-	}
-
-	if err := s.SetDb(0); err != nil {
-		panic(err)
-	}
-
+	// Session should already have db0 initiated
 	return s.db
 }
 
@@ -43,7 +36,7 @@ func (s *Session) SetDb(index int) error {
 	const inMemory = true
 
 	var err error
-	s.db, err = s.dbCtx.GetOrCreateDb(dbName, inMemory)
+	s.db, err = db.OpenDb(dbName, inMemory)
 
 	return err
 }
@@ -61,7 +54,10 @@ func (s *Session) ServerVersion() string {
 }
 
 func (s *Session) Handle() {
-	defer s.conn.Close()
+	defer func() {
+		s.conn.Close()
+		runtime.GC()
+	}()
 
 	reader := bufio.NewReader(s.conn)
 	for {
@@ -102,12 +98,12 @@ func (s *Session) Handle() {
 	}
 }
 
-func NewSession(id int, conn net.Conn, logger *logger.Logger, dbCtx *db.DbContext, serverVersion string) *Session {
+func NewSession(id int, conn net.Conn, logger *logger.Logger, db *db.Database, serverVersion string) *Session {
 	return &Session{
 		id:            id,
 		conn:          conn,
 		logger:        logger,
-		dbCtx:         dbCtx,
+		db:            db,
 		serverVersion: serverVersion,
 	}
 }

@@ -35,14 +35,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dbCtx := db.CreateCtx(config.Get().Badger)
-	defer dbCtx.Close()
+	db.StartGCRoutine()
+	defer db.CloseAllDbs()
 
-	if err := dbCtx.LoadDbs(); err != nil {
-		log.Fatal(err)
-	}
-
-	srv := server.New(config.Get().Server, dbCtx, getVersion())
+	srv := server.New(config.Get().Server, getVersion())
 	if err := srv.Start(); err != nil {
 		log.Fatal(err)
 	}

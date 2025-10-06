@@ -19,19 +19,17 @@ type Server struct {
 	logger    *logger.Logger
 	listener  net.Listener
 	config    config.ServerConfig
-	dbCtx     *db.DbContext
 	connCount int
 	version   string
 }
 
-func New(c config.ServerConfig, dbCtx *db.DbContext, version string) *Server {
+func New(c config.ServerConfig, version string) *Server {
 	//https://dgraph.io/docs/badger/faq/#are-there-any-go-specific-settings-that-i-should-use
 	runtime.GOMAXPROCS(128)
 
 	return &Server{
 		logger:  logger.Server(),
 		config:  c,
-		dbCtx:   dbCtx,
 		version: version,
 	}
 }
@@ -59,9 +57,15 @@ func (s *Server) Start() error {
 			continue
 		}
 
+		db0, err := db.OpenDb("db0", true)
+		if err != nil {
+			s.logger.Error(err)
+			continue
+		}
+
 		s.connCount++
 
-		respSession := resp.NewSession(s.connCount, conn, s.logger, s.dbCtx, s.version)
+		respSession := resp.NewSession(s.connCount, conn, s.logger, db0, s.version)
 		go respSession.Handle()
 	}
 
