@@ -97,16 +97,15 @@ func TestServer(t *testing.T) {
 }
 
 func startServer(ctx context.Context) (*Server, *redis.Client) {
-	port := 18950
+	config.SetDefault()
+	cfg := config.Get()
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("localhost:%d", port),
+		Addr:     fmt.Sprintf("localhost:%d", cfg.Server.Port),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
 
-	server := New(config.ServerConfig{
-		Port: uint16(port),
-	}, "0.0.0")
+	server := New(cfg, "0.0.0")
 
 	go server.Start()
 

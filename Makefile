@@ -5,7 +5,7 @@ build:
 	go build -o ./bin/hb -ldflags "-X main.version=$(ver)" .
 
 run: build
-	./bin/hb -config config.json
+	./bin/hb
 
 test:
 	go test ./... -v -race

@@ -18,12 +18,12 @@ import (
 type Server struct {
 	logger    *logger.Logger
 	listener  net.Listener
-	config    config.ServerConfig
+	config    *config.Config
 	connCount int
 	version   string
 }
 
-func New(c config.ServerConfig, version string) *Server {
+func New(c *config.Config, version string) *Server {
 	//https://dgraph.io/docs/badger/faq/#are-there-any-go-specific-settings-that-i-should-use
 	runtime.GOMAXPROCS(128)
 
@@ -36,7 +36,7 @@ func New(c config.ServerConfig, version string) *Server {
 
 func (s *Server) Start() error {
 	var err error
-	s.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", s.config.Port))
+	s.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", s.config.Server.Port))
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,8 @@ func (s *Server) Start() error {
 			continue
 		}
 
-		db0, err := db.OpenDb("db0", true)
+		// New connections always use db0
+		db0, err := db.OpenDb("db0", s.config.Badger.InMemory)
 		if err != nil {
 			s.logger.Error(err)
 			continue

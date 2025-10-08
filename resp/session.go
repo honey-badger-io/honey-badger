@@ -7,6 +7,7 @@ import (
 	"net"
 	"runtime"
 
+	"github.com/honey-badger-io/honey-badger/config"
 	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/logger"
 	"github.com/honey-badger-io/honey-badger/resp/commands"
@@ -32,10 +33,9 @@ func (s *Session) Db() *db.Database {
 
 func (s *Session) SetDb(index int) error {
 	dbName := fmt.Sprintf("db%d", index)
-	const inMemory = true
 
 	var err error
-	s.db, err = db.OpenDb(dbName, inMemory)
+	s.db, err = db.OpenDb(dbName, config.Get().Badger.InMemory)
 
 	return err
 }

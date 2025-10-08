@@ -1,8 +1,10 @@
 package commands
 
 import (
-	"github.com/honey-badger-io/honey-badger/resp/common"
 	"strconv"
+
+	"github.com/honey-badger-io/honey-badger/config"
+	"github.com/honey-badger-io/honey-badger/resp/common"
 )
 
 type selectCmd struct {
@@ -21,6 +23,10 @@ func (cmd *selectCmd) Invoke(session common.Session) (common.RespResult, error) 
 	dbIndex, err := strconv.Atoi(cmd.args[0])
 	if err != nil {
 		return common.ResultNull, common.NewRespError("value is not an integer or out of range")
+	}
+
+	if dbIndex < 0 || dbIndex > config.Get().Badger.MaxDbs-1 {
+		return common.ResultNull, common.NewRespError("value is out of range")
 	}
 
 	// Set the selected database for this session

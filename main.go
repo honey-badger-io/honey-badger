@@ -12,13 +12,11 @@ import (
 )
 
 var (
-	configPath   string
 	printVersion bool
 	version      string
 )
 
 func main() {
-	flag.StringVar(&configPath, "config", "", "-config <path_to_config_file>")
 	flag.BoolVar(&printVersion, "version", false, "-version")
 	flag.Parse()
 
@@ -27,7 +25,7 @@ func main() {
 		return
 	}
 
-	if err := config.Init(configPath); err != nil {
+	if err := config.Init(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -38,7 +36,7 @@ func main() {
 	db.StartGCRoutine()
 	defer db.CloseAllDbs()
 
-	srv := server.New(config.Get().Server, getVersion())
+	srv := server.New(config.Get(), getVersion())
 	if err := srv.Start(); err != nil {
 		log.Fatal(err)
 	}
