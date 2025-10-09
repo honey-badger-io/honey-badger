@@ -15,8 +15,10 @@ type Logger struct {
 	src   string
 }
 
-var sinks []*log.Logger
-var loggers = make(map[string]*Logger)
+var (
+	sinks   []*log.Logger
+	loggers = make(map[string]*Logger)
+)
 
 func Init() error {
 	conf := config.Get().Logger

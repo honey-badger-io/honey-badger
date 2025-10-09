@@ -1,8 +1,16 @@
 package config
 
 import (
-	"encoding/json"
+	"errors"
 	"os"
+	"strconv"
+	"strings"
+)
+
+const (
+	EnvPort    = "HB_PORT"      // int
+	EnvDataDir = "HB_DATA_DIR"  // string
+	EnvDbInMem = "HB_DB_IN_MEM" // bool
 )
 
 type Config struct {
@@ -12,28 +20,30 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port             uint16
-	MaxRecvMsgSizeMb int
+	Port uint16
 }
 
 type BadgerConfig struct {
 	DataDirPath string
 	GCPeriodMin int
+	MaxDbs      int
+	InMemory    bool
 }
 
 type LoggerConfig struct {
 	Sinks map[string]any
 }
 
-var current Config
+var current *Config
 var defaults = Config{
 	Badger: BadgerConfig{
 		DataDirPath: "data",
 		GCPeriodMin: 60,
+		MaxDbs:      16,
+		InMemory:    true,
 	},
 	Server: ServerConfig{
-		Port:             18950,
-		MaxRecvMsgSizeMb: 200,
+		Port: 18950,
 	},
 	Logger: LoggerConfig{
 		Sinks: map[string]any{
@@ -42,43 +52,42 @@ var defaults = Config{
 	},
 }
 
-func Init(configFilePath string) error {
-	if configFilePath == "" {
-		current = defaults
-		return nil
+func Init() error {
+	envConfig := Config{}
+
+	portEnv := os.Getenv(EnvPort)
+	inMembDbEnv := strings.TrimSpace(os.Getenv(EnvDbInMem))
+	port, _ := strconv.Atoi(portEnv)
+
+	envConfig.Server.Port = uint16(port)
+	envConfig.Badger.DataDirPath = os.Getenv(EnvDataDir)
+
+	setDefaults(&envConfig, inMembDbEnv)
+
+	// Create data dir if not exists
+	_, err := os.Stat(envConfig.Badger.DataDirPath)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(envConfig.Badger.DataDirPath, os.ModeDir); err != nil {
+			return err
+		}
 	}
 
-	f, err := os.OpenFile(configFilePath, os.O_RDONLY, os.ModeAppend)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	fileConfing := Config{}
-	decoder := json.NewDecoder(f)
-
-	if err := decoder.Decode(&fileConfing); err != nil {
-		return err
-	}
-
-	setDefaults(&fileConfing)
-
-	current = fileConfing
+	current = &envConfig
 
 	return nil
 }
 
-func Get() Config {
+func SetDefault() {
+	current = &defaults
+}
+
+func Get() *Config {
 	return current
 }
 
-func setDefaults(config *Config) {
+func setDefaults(config *Config, inMembDbEnv string) {
 	if config.Server.Port <= 1023 {
 		config.Server.Port = defaults.Server.Port
-	}
-
-	if config.Server.MaxRecvMsgSizeMb < 4 {
-		config.Server.MaxRecvMsgSizeMb = defaults.Server.MaxRecvMsgSizeMb
 	}
 
 	if config.Badger.DataDirPath == "" {
@@ -87,6 +96,16 @@ func setDefaults(config *Config) {
 
 	if config.Badger.GCPeriodMin <= 0 {
 		config.Badger.GCPeriodMin = defaults.Badger.GCPeriodMin
+	}
+
+	if config.Badger.MaxDbs <= 0 {
+		config.Badger.MaxDbs = defaults.Badger.MaxDbs
+	}
+
+	config.Badger.InMemory = defaults.Badger.InMemory
+
+	if strings.ToLower(inMembDbEnv) == "false" {
+		config.Badger.InMemory = false
 	}
 
 	if len(config.Logger.Sinks) == 0 {
