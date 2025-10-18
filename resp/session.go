@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"runtime"
 
 	"github.com/honey-badger-io/honey-badger/config"
 	"github.com/honey-badger-io/honey-badger/db"
@@ -53,10 +52,7 @@ func (s *Session) ServerVersion() string {
 }
 
 func (s *Session) Handle() {
-	defer func() {
-		s.conn.Close()
-		runtime.GC()
-	}()
+	defer s.conn.Close()
 
 	reader := bufio.NewReader(s.conn)
 	for {

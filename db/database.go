@@ -1,6 +1,7 @@
 package db
 
 import (
+	"os"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -108,4 +109,18 @@ func (db *Database) NewWriter() *Writer {
 	return &Writer{
 		bw: db.b.NewWriteBatch(),
 	}
+}
+
+func (db *Database) Backup(filePath string) error {
+	f, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.b.Backup(f, 0)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -8,9 +8,12 @@ import (
 )
 
 const (
-	EnvPort    = "HB_PORT"      // int
-	EnvDataDir = "HB_DATA_DIR"  // string
-	EnvDbInMem = "HB_DB_IN_MEM" // bool
+	EnvPort       = "HB_PORT"       // int
+	EnvDataDir    = "HB_DATA_DIR"   // string
+	EnvBackupDir  = "HB_BACKUP_DIR" // stirng
+	EnvDbInMem    = "HB_DB_IN_MEM"  // bool
+	PermDataDir   = 0700
+	PermBackupDir = 0744
 )
 
 type Config struct {
@@ -24,10 +27,11 @@ type ServerConfig struct {
 }
 
 type BadgerConfig struct {
-	DataDirPath string
-	GCPeriodMin int
-	MaxDbs      int
-	InMemory    bool
+	DataDirPath   string
+	BackupDirPath string
+	GCPeriodMin   int
+	MaxDbs        int
+	InMemory      bool
 }
 
 type LoggerConfig struct {
@@ -37,10 +41,11 @@ type LoggerConfig struct {
 var current *Config
 var defaults = Config{
 	Badger: BadgerConfig{
-		DataDirPath: "data",
-		GCPeriodMin: 60,
-		MaxDbs:      16,
-		InMemory:    false,
+		DataDirPath:   "data",
+		BackupDirPath: "data_backup",
+		GCPeriodMin:   60,
+		MaxDbs:        16,
+		InMemory:      false,
 	},
 	Server: ServerConfig{
 		Port: 18950,
@@ -61,15 +66,16 @@ func Init() error {
 
 	envConfig.Server.Port = uint16(port)
 	envConfig.Badger.DataDirPath = os.Getenv(EnvDataDir)
+	envConfig.Badger.BackupDirPath = os.Getenv(EnvBackupDir)
 
 	setDefaults(&envConfig, inMembDbEnv)
 
-	// Create data dir if not exists
-	_, err := os.Stat(envConfig.Badger.DataDirPath)
-	if errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(envConfig.Badger.DataDirPath, os.ModeDir); err != nil {
-			return err
-		}
+	if err := ensureDir(envConfig.Badger.DataDirPath, PermDataDir); err != nil {
+		return err
+	}
+
+	if err := ensureDir(envConfig.Badger.BackupDirPath, PermDataDir); err != nil {
+		return err
 	}
 
 	current = &envConfig
@@ -94,6 +100,10 @@ func setDefaults(config *Config, inMembDbEnv string) {
 		config.Badger.DataDirPath = defaults.Badger.DataDirPath
 	}
 
+	if config.Badger.BackupDirPath == "" {
+		config.Badger.BackupDirPath = defaults.Badger.BackupDirPath
+	}
+
 	if config.Badger.GCPeriodMin <= 0 {
 		config.Badger.GCPeriodMin = defaults.Badger.GCPeriodMin
 	}
@@ -111,4 +121,19 @@ func setDefaults(config *Config, inMembDbEnv string) {
 	if len(config.Logger.Sinks) == 0 {
 		config.Logger.Sinks = defaults.Logger.Sinks
 	}
+}
+
+func ensureDir(path string, perm os.FileMode) error {
+	_, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(path, perm); err != nil {
+			return err
+		}
+	}
+
+	if err != nil {
+		return nil
+	}
+
+	return nil
 }
