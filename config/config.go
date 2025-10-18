@@ -40,7 +40,7 @@ var defaults = Config{
 		DataDirPath: "data",
 		GCPeriodMin: 60,
 		MaxDbs:      16,
-		InMemory:    true,
+		InMemory:    false,
 	},
 	Server: ServerConfig{
 		Port: 18950,
@@ -104,8 +104,8 @@ func setDefaults(config *Config, inMembDbEnv string) {
 
 	config.Badger.InMemory = defaults.Badger.InMemory
 
-	if strings.ToLower(inMembDbEnv) == "false" {
-		config.Badger.InMemory = false
+	if strings.ToLower(inMembDbEnv) == "true" {
+		config.Badger.InMemory = true
 	}
 
 	if len(config.Logger.Sinks) == 0 {
