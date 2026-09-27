@@ -2,13 +2,14 @@ package common
 
 import (
 	"fmt"
+	"strings"
 )
 
 type RespResult string
 
 const (
 	ResultNull RespResult = "_\r\n"
-	ResultOk RespResult = "+OK\r\n"
+	ResultOk   RespResult = "+OK\r\n"
 )
 
 func NewResultString(data string) RespResult {
@@ -24,22 +25,23 @@ func NewResultInteger(data int) RespResult {
 }
 
 func NewResultMap(data map[string]any) RespResult {
-	result := fmt.Sprintf("%%%d\r\n", len(data))
+	var result strings.Builder
+	fmt.Fprintf(&result, "%%%d\r\n", len(data))
 
 	for k, v := range data {
 		// Serialize key
-		result += serializeString(k)
+		result.WriteString(serializeString(k))
 
 		// Serialize value
-		switch v.(type) {
+		switch v := v.(type) {
 		case int:
-			result += serializeInt(v.(int))
+			result.WriteString(serializeInt(v))
 		default:
-			result += serializeBulkString(fmt.Sprintf("%v", v))
+			result.WriteString(serializeBulkString(fmt.Sprintf("%v", v)))
 		}
 	}
 
-	return RespResult(result)
+	return RespResult(result.String())
 }
 
 func serializeBulkString(data string) string {

@@ -61,9 +61,8 @@ func (s *Session) Handle() {
 	reader := bufio.NewReader(s.conn)
 	for {
 		cmd, err := commands.Parse(reader)
-		var respErr common.RespError
 
-		if errors.As(err, &respErr) {
+		if respErr, ok := errors.AsType[common.RespError](err); ok {
 			_, _ = s.conn.Write([]byte(respErr.Error()))
 			continue
 		}
@@ -73,7 +72,7 @@ func (s *Session) Handle() {
 		}
 
 		if err != nil {
-			respErr = common.NewRespError("server error")
+			respErr := common.NewRespError("server error")
 			_, _ = s.conn.Write([]byte(respErr.Error()))
 			logger.Server().Error(err)
 			continue
@@ -81,13 +80,13 @@ func (s *Session) Handle() {
 
 		result, err := cmd.Invoke(s)
 
-		if errors.As(err, &respErr) {
+		if respErr, ok := errors.AsType[common.RespError](err); ok {
 			_, _ = s.conn.Write([]byte(respErr.Error()))
 			continue
 		}
 
 		if err != nil {
-			respErr = common.NewRespError("server error")
+			respErr := common.NewRespError("server error")
 			_, _ = s.conn.Write([]byte(respErr.Error()))
 			logger.Server().Error(err)
 			continue
