@@ -1,0 +1,5 @@
+# Only send the Go sources to the build, so local data, logs, binaries and .git never reach it
+*
+!go.mod
+!go.sum
+!**/*.go
