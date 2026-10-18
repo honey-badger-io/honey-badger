@@ -15,11 +15,12 @@ type helloCmd struct {
 const defaultProto = 3
 const cmdHello = "HELLO"
 
+// HELLO [protover [AUTH username password] [SETNAME clientname]]
 func (cmd *helloCmd) Invoke(session common.Session) (common.RespResult, error) {
 	proto := defaultProto
 	var err error
 
-	if cmd.numOfArgs == 1 {
+	if cmd.numOfArgs > 0 {
 		proto, err = strconv.Atoi(cmd.args[0])
 		if err != nil {
 			return common.ResultNull, common.NewRespErrorf("Protocol version is not an integer or out of range")
@@ -30,18 +31,34 @@ func (cmd *helloCmd) Invoke(session common.Session) (common.RespResult, error) {
 		}
 	}
 
-	if cmd.numOfArgs > 1 {
-		setName := strings.ToUpper(strings.TrimSpace(cmd.args[1]))
+	var username, password, name string
+	var hasAuth, hasName bool
 
-		if setName != "SETNAME" {
-			return common.ResultNull, common.NewRespErrorf("Syntax error in HELLO option '%s'", cmd.args[1])
+	for i := 1; i < cmd.numOfArgs; {
+		option := strings.ToUpper(cmd.args[i])
+
+		switch {
+		case option == "AUTH" && i+2 < cmd.numOfArgs:
+			username, password, hasAuth = cmd.args[i+1], cmd.args[i+2], true
+			i += 3
+		case option == "SETNAME" && i+1 < cmd.numOfArgs:
+			name, hasName = cmd.args[i+1], true
+			i += 2
+		default:
+			return common.ResultNull, common.NewRespErrorf("Syntax error in HELLO option '%s'", cmd.args[i])
 		}
+	}
 
-		if cmd.numOfArgs != 3 {
-			return common.ResultNull, common.NewRespErrorf("Syntax error in HELLO option '%s'", cmd.args[1])
-		}
+	if hasAuth && !session.Authenticate(username, password) {
+		return common.ResultNull, common.WrongPassError
+	}
 
-		session.SetName(cmd.args[2])
+	if !session.Authenticated() {
+		return common.ResultNull, common.NoAuthHello
+	}
+
+	if hasName {
+		session.SetName(name)
 	}
 
 	data := make(map[string]any)

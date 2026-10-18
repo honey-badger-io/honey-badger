@@ -17,7 +17,7 @@ import (
 
 func TestReadArray(t *testing.T) {
 	t.Run("should read args", func(t *testing.T) {
-		args, err := readArray(newReader("*3\r\n$3\r\nSET\r\n$3\r\nkey\r\n$5\r\nvalue\r\n"))
+		args, err := readArray(newReader("*3\r\n$3\r\nSET\r\n$3\r\nkey\r\n$5\r\nvalue\r\n"), DefaultLimits)
 
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"SET", "key", "value"}, args)
@@ -26,14 +26,14 @@ func TestReadArray(t *testing.T) {
 	t.Run("should keep CRLF, whitespace and binary data in values", func(t *testing.T) {
 		value := "  x\r\n*1\r\n$4\r\nPING\r\n\x00\xff "
 
-		args, err := readArray(newReader(encode("SET", "k", value)))
+		args, err := readArray(newReader(encode("SET", "k", value)), DefaultLimits)
 
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"SET", "k", value}, args)
 	})
 
 	t.Run("should read empty bulk string", func(t *testing.T) {
-		args, err := readArray(newReader("*2\r\n$3\r\nGET\r\n$0\r\n\r\n"))
+		args, err := readArray(newReader("*2\r\n$3\r\nGET\r\n$0\r\n\r\n"), DefaultLimits)
 
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"GET", ""}, args)
@@ -42,9 +42,9 @@ func TestReadArray(t *testing.T) {
 	t.Run("should read pipelined commands", func(t *testing.T) {
 		reader := newReader(encode("PING") + encode("GET", "k"))
 
-		first, err1 := readArray(reader)
-		second, err2 := readArray(reader)
-		_, err3 := readArray(reader)
+		first, err1 := readArray(reader, DefaultLimits)
+		second, err2 := readArray(reader, DefaultLimits)
+		_, err3 := readArray(reader, DefaultLimits)
 
 		assert.Nil(t, err1)
 		assert.Nil(t, err2)
@@ -54,7 +54,7 @@ func TestReadArray(t *testing.T) {
 	})
 
 	t.Run("should return EOF on empty stream", func(t *testing.T) {
-		_, err := readArray(newReader(""))
+		_, err := readArray(newReader(""), DefaultLimits)
 
 		assert.Equal(t, io.EOF, err)
 	})
@@ -68,7 +68,7 @@ func TestReadArray(t *testing.T) {
 			"*2\r\n$3\r\nGET\r\n$2\r\nab",
 			"*2\r\n$3\r\nGET\r\n$2\r\nab\r",
 		} {
-			_, err := readArray(newReader(input))
+			_, err := readArray(newReader(input), DefaultLimits)
 
 			assert.ErrorIs(t, err, io.ErrUnexpectedEOF, "%q", input)
 		}
@@ -83,15 +83,15 @@ func TestReadArray(t *testing.T) {
 			"*\r\n",
 			"\r\n",
 			"*1\n$4\r\nPING\r\n",
-			fmt.Sprintf("*%d\r\n", maxArrayLen+1),
+			fmt.Sprintf("*%d\r\n", DefaultLimits.MaxArrayLen+1),
 			"*1\r\n$-1\r\n",
 			"*1\r\n:4\r\nPING\r\n",
-			fmt.Sprintf("*1\r\n$%d\r\n", maxBulkLen+1),
+			fmt.Sprintf("*1\r\n$%d\r\n", DefaultLimits.MaxBulkLen+1),
 			"*1\r\n$4\r\nPINGxx",
 			"*1\r\n$4\r\n" + strings.Repeat("1", 5000) + "\r\n",
 			"*" + strings.Repeat("1", 5000) + "\r\n",
 		} {
-			_, err := readArray(newReader(input))
+			_, err := readArray(newReader(input), DefaultLimits)
 
 			_, ok := errors.AsType[common.ProtocolError](err)
 			assert.True(t, ok, "%q: got %v", input, err)
@@ -100,7 +100,7 @@ func TestReadArray(t *testing.T) {
 
 	t.Run("should not reserve memory for declared lengths before data arrives", func(t *testing.T) {
 		allocs := testing.AllocsPerRun(10, func() {
-			_, _ = readArray(newReader(fmt.Sprintf("*%d\r\n$%d\r\nab", maxArrayLen, maxBulkLen)))
+			_, _ = readArray(newReader(fmt.Sprintf("*%d\r\n$%d\r\nab", DefaultLimits.MaxArrayLen, DefaultLimits.MaxBulkLen)), DefaultLimits)
 		})
 
 		// Would be a ~512MB allocation if the bulk length was trusted
@@ -108,9 +108,32 @@ func TestReadArray(t *testing.T) {
 	})
 }
 
+func TestUnauthenticatedLimits(t *testing.T) {
+	t.Run("should accept AUTH within limits", func(t *testing.T) {
+		password := strings.Repeat("x", UnauthenticatedLimits.MaxBulkLen)
+
+		args, err := readArray(newReader(encode("AUTH", "default", password)), UnauthenticatedLimits)
+
+		assert.Nil(t, err)
+		assert.Equal(t, []string{"AUTH", "default", password}, args)
+	})
+
+	t.Run("should reject commands over limits", func(t *testing.T) {
+		for _, input := range []string{
+			encode(slices.Repeat([]string{"x"}, UnauthenticatedLimits.MaxArrayLen+1)...),
+			encode("AUTH", strings.Repeat("x", UnauthenticatedLimits.MaxBulkLen+1)),
+		} {
+			_, err := readArray(newReader(input), UnauthenticatedLimits)
+
+			_, ok := errors.AsType[common.ProtocolError](err)
+			assert.True(t, ok, "got %v", err)
+		}
+	})
+}
+
 func TestParse(t *testing.T) {
 	t.Run("should parse command case insensitive", func(t *testing.T) {
-		cmd, err := Parse(newReader(encode("get", "Key")))
+		cmd, err := Parse(newReader(encode("get", "Key")), DefaultLimits)
 
 		assert.Nil(t, err)
 		assert.Equal(t, &getCmd{numOfArgs: 1, args: []string{"Key"}}, cmd)
@@ -119,8 +142,8 @@ func TestParse(t *testing.T) {
 	t.Run("should keep stream in sync after unknown command", func(t *testing.T) {
 		reader := newReader(encode("NOPE", "a", "b") + encode("PING"))
 
-		_, err1 := Parse(reader)
-		cmd, err2 := Parse(reader)
+		_, err1 := Parse(reader, DefaultLimits)
+		cmd, err2 := Parse(reader, DefaultLimits)
 
 		_, ok := errors.AsType[common.RespError](err1)
 		assert.True(t, ok)
@@ -140,7 +163,7 @@ func FuzzReadArrayRoundTrip(f *testing.F) {
 		want := []string{a, b, c}
 		reader := newReader(encode(want...))
 
-		args, err := readArray(reader)
+		args, err := readArray(reader, DefaultLimits)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -149,7 +172,7 @@ func FuzzReadArrayRoundTrip(f *testing.F) {
 			t.Fatalf("got %q, want %q", args, want)
 		}
 
-		if _, err := readArray(reader); err != io.EOF {
+		if _, err := readArray(reader, DefaultLimits); err != io.EOF {
 			t.Fatalf("stream not fully consumed, got %v", err)
 		}
 	})
@@ -164,6 +187,8 @@ func FuzzParse(f *testing.F) {
 	f.Add([]byte(encode("SELECT", "3") + encode("SELECT", "-1") + encode("SELECT", "99")))
 	f.Add([]byte(encode("CLIENT") + encode("CLIENT", "SETNAME", "n") + encode("CLIENT", "GETNAME")))
 	f.Add([]byte(encode("HELLO") + encode("HELLO", "3", "SETNAME", "n") + encode("HELLO", "2")))
+	f.Add([]byte(encode("HELLO", "3", "AUTH", "default", "secret", "SETNAME", "n") + encode("HELLO", "3", "AUTH", "default")))
+	f.Add([]byte(encode("AUTH") + encode("AUTH", "secret") + encode("AUTH", "default", "wrong") + encode("AUTH", "a", "b", "c")))
 	f.Add([]byte("*0\r\n$6\r\nCLIENT\r\n"))
 	f.Add([]byte("*1000000\r\n$3\r\nDEL\r\n"))
 	f.Add([]byte("*2\r\n$3\r\nGET\r\n$100\r\nshort\r\n"))
@@ -172,7 +197,7 @@ func FuzzParse(f *testing.F) {
 		reader := bufio.NewReader(strings.NewReader(string(data)))
 
 		for {
-			cmd, err := Parse(reader)
+			cmd, err := Parse(reader, DefaultLimits)
 
 			if _, ok := errors.AsType[common.RespError](err); ok {
 				continue
@@ -189,8 +214,9 @@ func FuzzParse(f *testing.F) {
 }
 
 type fakeSession struct {
-	db   *db.Database
-	name string
+	db            *db.Database
+	name          string
+	authenticated bool
 }
 
 func newFakeSession() *fakeSession {
@@ -202,12 +228,18 @@ func newFakeSession() *fakeSession {
 	return &fakeSession{db: database}
 }
 
-func (s *fakeSession) Id() int               { return 1 }
-func (s *fakeSession) Db() *db.Database      { return s.db }
-func (s *fakeSession) Name() string          { return s.name }
-func (s *fakeSession) SetDb(index int) error { return nil }
-func (s *fakeSession) ServerVersion() string { return "0.0.0" }
-func (s *fakeSession) SetName(name string)   { s.name = name }
+func (s *fakeSession) Id() int                { return 1 }
+func (s *fakeSession) Db() *db.Database       { return s.db }
+func (s *fakeSession) Name() string           { return s.name }
+func (s *fakeSession) SetDb(index int) error  { return nil }
+func (s *fakeSession) ServerVersion() string  { return "0.0.0" }
+func (s *fakeSession) SetName(name string)    { s.name = name }
+func (s *fakeSession) PasswordRequired() bool { return true }
+func (s *fakeSession) Authenticated() bool    { return s.authenticated }
+func (s *fakeSession) Authenticate(username, password string) bool {
+	s.authenticated = username == "default" && password == "secret"
+	return s.authenticated
+}
 
 func encode(args ...string) string {
 	var b strings.Builder

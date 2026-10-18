@@ -2,10 +2,10 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -14,6 +14,7 @@ import (
 	"github.com/honey-badger-io/honey-badger/db"
 	"github.com/honey-badger-io/honey-badger/logger"
 	"github.com/honey-badger-io/honey-badger/resp"
+	"github.com/honey-badger-io/honey-badger/resp/common"
 )
 
 // How long sessions get to send replies to commands already received once the server is stopping
@@ -26,27 +27,37 @@ type Server struct {
 	connCount int
 	version   string
 
-	// Guards listener, conns and stopping, which Stop uses from another goroutine
+	// Guards listener, sessions and stopping, which Stop uses from another goroutine
 	mux      sync.Mutex
-	conns    map[int]net.Conn
+	sessions map[int]*resp.Session
 	stopping bool
-	sessions sync.WaitGroup
+	running  sync.WaitGroup
 }
+
+var (
+	errStopping   = errors.New("server is stopping")
+	errMaxClients = common.NewRespError("max number of clients reached")
+)
 
 func New(c *config.Config, version string) *Server {
 	return &Server{
-		logger:  logger.Server(),
-		config:  c,
-		version: version,
-		conns:   make(map[int]net.Conn),
+		logger:   logger.Server(),
+		config:   c,
+		version:  version,
+		sessions: make(map[int]*resp.Session),
 	}
 }
 
 // Start serves connections until Stop is called, then returns once every session has ended
 func (s *Server) Start() error {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.config.Server.Port))
+	addr := net.JoinHostPort(s.config.Server.Bind, strconv.Itoa(int(s.config.Server.Port)))
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
+	}
+
+	if s.config.Server.Password == "" && !isLoopback(listener.Addr()) {
+		s.logger.Warningf("Listening on %v without %s set, so anyone who can reach this address has full access", listener.Addr(), config.EnvPassword)
 	}
 
 	s.mux.Lock()
@@ -80,19 +91,29 @@ func (s *Server) Start() error {
 		s.connCount++
 		id := s.connCount
 
-		if !s.track(id, conn) {
+		respSession := resp.NewSession(id, conn, db0, s.version, resp.Options{
+			Password: s.config.Server.Password,
+			Timeout:  s.config.Server.Timeout,
+		})
+
+		if err := s.track(id, respSession); err != nil {
+			if errors.Is(err, errMaxClients) {
+				// Like Redis, tell the client why before closing. The deadline keeps a client that doesn't read from blocking Accept.
+				_ = conn.SetWriteDeadline(time.Now().Add(time.Second))
+				_, _ = conn.Write([]byte(errMaxClients.Error()))
+			}
+
 			conn.Close()
 			continue
 		}
 
-		respSession := resp.NewSession(id, conn, db0, s.version)
-		s.sessions.Go(func() {
+		s.running.Go(func() {
 			defer s.untrack(id)
 			respSession.Handle()
 		})
 	}
 
-	s.sessions.Wait()
+	s.running.Wait()
 
 	s.logger.Infof("Server stopped")
 	return nil
@@ -107,10 +128,8 @@ func (s *Server) Stop() {
 
 	s.stopping = true
 
-	// Unblocks sessions waiting for their next command, and bounds how long replies may take
-	for _, conn := range s.conns {
-		_ = conn.SetReadDeadline(time.Now())
-		_ = conn.SetWriteDeadline(time.Now().Add(shutdownTimeout))
+	for _, session := range s.sessions {
+		session.Stop(shutdownTimeout)
 	}
 
 	if s.listener != nil {
@@ -118,24 +137,33 @@ func (s *Server) Stop() {
 	}
 }
 
-// track registers a session's connection, so Stop can end it. It returns false once the server is stopping.
-func (s *Server) track(id int, conn net.Conn) bool {
+// track registers a session, so Stop can end it. It fails once the server is stopping or has MaxClients sessions.
+func (s *Server) track(id int, session *resp.Session) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
 	if s.stopping {
-		return false
+		return errStopping
 	}
 
-	s.conns[id] = conn
-	return true
+	if len(s.sessions) >= s.config.Server.MaxClients {
+		return errMaxClients
+	}
+
+	s.sessions[id] = session
+	return nil
 }
 
 func (s *Server) untrack(id int) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	delete(s.conns, id)
+	delete(s.sessions, id)
+}
+
+func isLoopback(addr net.Addr) bool {
+	tcpAddr, ok := addr.(*net.TCPAddr)
+	return ok && tcpAddr.IP.IsLoopback()
 }
 
 func notifySignal(s *Server) {

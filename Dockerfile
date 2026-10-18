@@ -11,6 +11,8 @@ FROM alpine:3.24 AS app
 WORKDIR /app
 COPY --from=source /source/bin/hb ./hb
 ENV HB_PORT=18950
+# Inside a container, loopback isn't reachable through published ports. Set HB_PASSWORD when publishing them.
+ENV HB_BIND=0.0.0.0
 ENV HB_DATA_DIR="/var/hb/data"
 ENV HB_DB_IN_MEM="true"
 EXPOSE ${HB_PORT}
