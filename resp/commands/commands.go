@@ -14,10 +14,17 @@ type RespCmd interface {
 	Invoke(session common.Session) (common.RespResult, error)
 }
 
-// Same limits as Redis' defaults
-const (
-	maxArrayLen = 1024 * 1024
-	maxBulkLen  = 512 * 1024 * 1024
+// Limits bound the size of a command that Parse accepts
+type Limits struct {
+	MaxArrayLen int
+	MaxBulkLen  int
+}
+
+var (
+	// Same limits as Redis' defaults
+	DefaultLimits = Limits{MaxArrayLen: 1024 * 1024, MaxBulkLen: 512 * 1024 * 1024}
+	// Redis' limits for clients that haven't authenticated yet, so they can't make the server buffer much
+	UnauthenticatedLimits = Limits{MaxArrayLen: 10, MaxBulkLen: 16 * 1024}
 )
 
 // Caps how much memory a declared length can reserve before its data has actually arrived
@@ -26,8 +33,8 @@ const maxPrealloc = 64 * 1024
 // Parse reads one RESP array of bulk strings from the reader and builds the command it names.
 // A common.ProtocolError means the stream is out of sync and the session must end, any other
 // non-RespError is an I/O error from the reader.
-func Parse(reader *bufio.Reader) (RespCmd, error) {
-	args, err := readArray(reader)
+func Parse(reader *bufio.Reader, limits Limits) (RespCmd, error) {
+	args, err := readArray(reader, limits)
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +42,8 @@ func Parse(reader *bufio.Reader) (RespCmd, error) {
 	return newCmd(strings.ToUpper(args[0]), len(args)-1, args[1:])
 }
 
-func readArray(reader *bufio.Reader) ([]string, error) {
-	n, err := readLength(reader, '*', 1, maxArrayLen)
+func readArray(reader *bufio.Reader, limits Limits) ([]string, error) {
+	n, err := readLength(reader, '*', 1, limits.MaxArrayLen)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +51,7 @@ func readArray(reader *bufio.Reader) ([]string, error) {
 	args := make([]string, 0, min(n, 64))
 
 	for range n {
-		arg, err := readBulkString(reader)
+		arg, err := readBulkString(reader, limits.MaxBulkLen)
 		if err != nil {
 			return nil, unexpectedEOF(err)
 		}
@@ -55,8 +62,8 @@ func readArray(reader *bufio.Reader) ([]string, error) {
 	return args, nil
 }
 
-func readBulkString(reader *bufio.Reader) (string, error) {
-	n, err := readLength(reader, '$', 0, maxBulkLen)
+func readBulkString(reader *bufio.Reader, maxLen int) (string, error) {
+	n, err := readLength(reader, '$', 0, maxLen)
 	if err != nil {
 		return "", err
 	}
@@ -144,6 +151,16 @@ func unexpectedEOF(err error) error {
 	return err
 }
 
+// AllowedBeforeAuth reports whether the command may run before the session has authenticated
+func AllowedBeforeAuth(cmd RespCmd) bool {
+	switch cmd.(type) {
+	case *authCmd, *helloCmd:
+		return true
+	default:
+		return false
+	}
+}
+
 func newCmd(cmd string, numOfArguments int, args []string) (RespCmd, error) {
 	if cmd == cmdPing {
 		return &pingCmd{}, nil
@@ -152,6 +169,13 @@ func newCmd(cmd string, numOfArguments int, args []string) (RespCmd, error) {
 	// TODO: Can we use reflection here?
 	if cmd == cmdHello {
 		return &helloCmd{
+			numOfArgs: numOfArguments,
+			args:      args,
+		}, nil
+	}
+
+	if cmd == cmdAuth {
+		return &authCmd{
 			numOfArgs: numOfArguments,
 			args:      args,
 		}, nil

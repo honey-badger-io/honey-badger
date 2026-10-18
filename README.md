@@ -36,11 +36,26 @@ bin\hb.exe
 
 Run Docker image using
 ```sh
-docker run --name honey-badger -p 18950:18950 -d meeron/honey-badger:latest
+docker run --name honey-badger -p 18950:18950 -e HB_PASSWORD=<password> -d meeron/honey-badger:latest
 ```
+The image listens on all interfaces, so always set `HB_PASSWORD` when you publish its port.
+
+### Configuration
+Honey Badger is configured with environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `HB_PORT` | `18950` | Listen port |
+| `HB_BIND` | `127.0.0.1` | Listen address. Use `0.0.0.0` to accept connections from other hosts (the Docker image does) |
+| `HB_PASSWORD` | _(none)_ | When set, clients must `AUTH` (or `HELLO 3 AUTH default <password>`) before running other commands |
+| `HB_TIMEOUT` | `0` | Seconds a client may take to send its next command before it is disconnected. `0` disables it |
+| `HB_MAX_CLIENTS` | `10000` | Maximum number of connected clients |
+| `HB_DATA_DIR` | `data` | Data directory |
+| `HB_DB_IN_MEM` | `true` | Set to `false` to persist data on disk |
 
 ### RESP
 Not all RESP commands has been implemented. Currently working commands:
+* [AUTH](https://redis.io/docs/latest/commands/auth/)
 * [CLIENT SETNAME](https://redis.io/docs/latest/commands/client-setname/)
 * [CLIENT GETNAME](https://redis.io/docs/latest/commands/client-getname/)
 * [SET](https://redis.io/docs/latest/commands/set/)

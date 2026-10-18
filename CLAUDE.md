@@ -23,23 +23,27 @@ go test ./server -run 'TestServer/should_call_get' -v  # single subtest
 redis-benchmark -t set,get -n 1000000 -q -p 18950      # benchmark a running server
 ```
 
-`server/server_test.go` starts real servers on ports 18950 (`TestServer`) and 18951 (`TestStop`) and talks to them with `go-redis`, so tests fail if another `hb` instance is already listening on either port.
+`server/server_test.go` starts real servers on ports 18950–18954 (one per test function, see `startTestServer`) and talks to them with `go-redis` or the raw-RESP `rawClient`, so tests fail if another `hb` instance is already listening on one of those ports.
 
 ## Configuration
 
 Configuration comes **only from environment variables** (`config/config.go`); there is no config file or `-config` flag:
 
 - `HB_PORT`: listen port. Values ≤ 1023 or unset fall back to 18950.
+- `HB_BIND`: listen address, default `127.0.0.1`. The Dockerfile sets `0.0.0.0`. Listening on a non-loopback address without `HB_PASSWORD` logs a warning.
+- `HB_PASSWORD`: when set, sessions start unauthenticated. Until they `AUTH` (or `HELLO 3 AUTH default <pw>`), every command except those in `commands.AllowedBeforeAuth` gets `-NOAUTH`, and `Parse` applies `UnauthenticatedLimits` (10 args, 16KB per bulk string).
+- `HB_TIMEOUT`: seconds (default `0`, disabled) a session may take to receive a whole command and send its reply.
+- `HB_MAX_CLIENTS`: default 10000. Clients over the limit get `-ERR max number of clients reached` and are disconnected.
 - `HB_DATA_DIR`: data directory (default `data`, created on startup).
 - `HB_DB_IN_MEM`: databases are **in-memory by default**. Only the literal value `false` enables on-disk persistence.
 
-`MaxDbs` (16) and `GCPeriodMin` (60) are hard-coded defaults. Tests call `config.SetDefault()` instead of `config.Init()`.
+Invalid `HB_TIMEOUT`/`HB_MAX_CLIENTS` values make `Init` fail rather than fall back to the default. `MaxDbs` (16) and `GCPeriodMin` (60) are hard-coded defaults. Tests call `config.SetDefault()` instead of `config.Init()`.
 
 ## Architecture
 
 Request flow: `main.go` → `server.Server` accepts TCP connections → each connection gets a `resp.Session` running in its own goroutine → `commands.Parse` reads one RESP array from the stream and builds a `RespCmd` → `cmd.Invoke(session)` returns a `common.RespResult`, which is written to the session's `bufio.Writer`. The writer is flushed only once the reader has no buffered input left, so replies to pipelined commands go out in a single write. Don't write to `conn` directly.
 
-On SIGINT/SIGTERM, `Server.Stop` closes the listener and sets a read deadline on every session's connection. Sessions finish the commands they have already received and then exit. `Start` returns only after every session has ended, so the deferred `CloseAllDbs` in `main` never closes a database that is still in use. A second signal kills the process immediately.
+On SIGINT/SIGTERM, `Server.Stop` closes the listener and calls `Session.Stop` on every session, which sets a read deadline that overrides the session's own `HB_TIMEOUT` deadline. Sessions finish the commands they have already received and then exit. `Start` returns only after every session has ended, so the deferred `CloseAllDbs` in `main` never closes a database that is still in use. A second signal kills the process immediately.
 
 - **`db/`**: package-level registry (`dbs` map, guarded by a mutex) of named BadgerDB instances. `OpenDb(name, inMemory)` is idempotent and returns the cached instance. On-disk databases live at `<DataDirPath>/<name>`. `StartGCRoutine` runs value-log GC on a ticker for non-in-memory databases only. `CloseAllDbs` is deferred in `main`.
 - **`resp/session.go`**: per-connection state (id, current DB, client name). New connections always start on `db0`, and `SELECT n` switches the session to database `db<n>` (0 ≤ n < MaxDbs, opened lazily).
@@ -50,7 +54,7 @@ On SIGINT/SIGTERM, `Server.Stop` closes the listener and sets a read deadline on
 ### Adding a RESP command
 
 1. Add `resp/commands/cmd_<name>.go` following the existing pattern.
-2. Register it in the `if` chain in `newCmd` in `resp/commands/commands.go`. Command names are upper-cased before dispatch.
+2. Register it in the `if` chain in `newCmd` in `resp/commands/commands.go`. Command names are upper-cased before dispatch. New commands require auth; add one to `AllowedBeforeAuth` only if clients need it to authenticate.
 3. Add a subtest to `TestServer` in `server/server_test.go` that uses the `go-redis` client.
 4. Add the command to the supported-commands list in `README.md`.
 
