@@ -1,6 +1,8 @@
 package db
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -100,4 +102,25 @@ func getDb() *Database {
 	}
 
 	return db0
+}
+
+func TestRegistryConcurrency(t *testing.T) {
+	t.Run("should run GC while databases are being opened", func(t *testing.T) {
+		var wg sync.WaitGroup
+
+		wg.Go(func() {
+			for i := range 50 {
+				if _, err := OpenDb(fmt.Sprintf("race-%d", i), true); err != nil {
+					panic(err)
+				}
+			}
+		})
+		wg.Go(func() {
+			for range 500 {
+				runGC()
+			}
+		})
+
+		wg.Wait()
+	})
 }
