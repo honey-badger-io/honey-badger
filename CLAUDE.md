@@ -37,7 +37,7 @@ Configuration comes **only from environment variables** (`config/config.go`); th
 
 ## Architecture
 
-Request flow: `main.go` → `server.Server` accepts TCP connections → each connection gets a `resp.Session` running in its own goroutine → `commands.Parse` reads one RESP array from the stream and builds a `RespCmd` → `cmd.Invoke(session)` returns a `common.RespResult`, which is written back as raw bytes.
+Request flow: `main.go` → `server.Server` accepts TCP connections → each connection gets a `resp.Session` running in its own goroutine → `commands.Parse` reads one RESP array from the stream and builds a `RespCmd` → `cmd.Invoke(session)` returns a `common.RespResult`, which is written to the session's `bufio.Writer`. The writer is flushed only once the reader has no buffered input left, so replies to pipelined commands go out in a single write. Don't write to `conn` directly.
 
 - **`db/`**: package-level registry (`dbs` map, guarded by a mutex) of named BadgerDB instances. `OpenDb(name, inMemory)` is idempotent and returns the cached instance. On-disk databases live at `<DataDirPath>/<name>`. `StartGCRoutine` runs value-log GC on a ticker for non-in-memory databases only. `CloseAllDbs` is deferred in `main`.
 - **`resp/session.go`**: per-connection state (id, current DB, client name). New connections always start on `db0`, and `SELECT n` switches the session to database `db<n>` (0 ≤ n < MaxDbs, opened lazily).

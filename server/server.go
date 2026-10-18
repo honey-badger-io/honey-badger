@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 
 	"github.com/honey-badger-io/honey-badger/config"
@@ -24,9 +23,6 @@ type Server struct {
 }
 
 func New(c *config.Config, version string) *Server {
-	//https://dgraph.io/docs/badger/faq/#are-there-any-go-specific-settings-that-i-should-use
-	runtime.GOMAXPROCS(128)
-
 	return &Server{
 		logger:  logger.Server(),
 		config:  c,
