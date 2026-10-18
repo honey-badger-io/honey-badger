@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"runtime"
+	"runtime/debug"
 
 	"github.com/honey-badger-io/honey-badger/config"
 	"github.com/honey-badger-io/honey-badger/db"
@@ -54,6 +56,11 @@ func (s *Session) ServerVersion() string {
 
 func (s *Session) Handle() {
 	defer func() {
+		// A bug in one command must not take down the whole server
+		if r := recover(); r != nil {
+			logger.Server().Errorf("session %d panicked: %v\n%s", s.id, r, debug.Stack())
+		}
+
 		s.conn.Close()
 		runtime.GC()
 	}()
@@ -62,20 +69,23 @@ func (s *Session) Handle() {
 	for {
 		cmd, err := commands.Parse(reader)
 
+		// The stream can't be resynced after a protocol error, so reply and end the session
+		if protoErr, ok := errors.AsType[common.ProtocolError](err); ok {
+			_, _ = s.conn.Write([]byte(protoErr.Error()))
+			return
+		}
+
 		if respErr, ok := errors.AsType[common.RespError](err); ok {
 			_, _ = s.conn.Write([]byte(respErr.Error()))
 			continue
 		}
 
-		if err != nil && err.Error() == "EOF" {
-			return
-		}
-
+		// Any other parse error comes from the connection itself
 		if err != nil {
-			respErr := common.NewRespError("server error")
-			_, _ = s.conn.Write([]byte(respErr.Error()))
-			logger.Server().Error(err)
-			continue
+			if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+				logger.Server().Error(err)
+			}
+			return
 		}
 
 		result, err := cmd.Invoke(s)

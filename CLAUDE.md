@@ -13,6 +13,7 @@ make build            # builds ./bin/hb; version is injected via `make build ver
 make dev              # go run .
 make run              # build + run ./bin/hb
 make test             # go test ./... -v -race  (what CI runs, along with make build)
+make fuzz             # fuzzes the RESP parser and commands; length set via `make fuzz fuzztime=5m`
 make docker ver=1.2.3 # builds meeron/honey-badger:<ver> and :latest
 
 go test ./server -run TestServer -v -race              # single test
@@ -53,10 +54,11 @@ Request flow: `main.go` → `server.Server` accepts TCP connections → each con
 
 ### Error handling convention
 
-- Return a `common.RespError` (`NewRespError`/`NewRespErrorf`) from `Invoke` or `Parse` to send that message to the client as `-ERR ...`.
-- Any other error is logged, and the client receives a generic `-ERR server error`.
-- An `EOF` from the reader ends the session.
+- Return a `common.RespError` (`NewRespError`/`NewRespErrorf`) from `Invoke` or `Parse` to send that message to the client as `-ERR ...`. The session keeps going.
+- `Parse` returns a `common.ProtocolError` (`NewProtocolErrorf`) for malformed input. The client gets `-ERR Protocol error: ...` and the session ends, because the stream can't be resynced.
+- Any other error from `Invoke` is logged, and the client receives a generic `-ERR server error`. Any other error from `Parse` is an I/O error and ends the session.
+- `Handle` recovers panics, so a buggy command only kills its own session.
 
-### Parser limitation
+### Parser
 
-`commands.Parse` reads line by line with `ReadString('\n')` and ignores the `$<len>` bulk-string prefixes. Keys or values that contain `\r\n` (binary data) are therefore not handled correctly, so keep this in mind when you change parsing or add commands that take binary payloads.
+`commands.Parse` only accepts RESP arrays of bulk strings (no inline commands). It reads exactly `$<len>` bytes for each bulk string, so keys and values may hold any binary data, including `\r\n`, and they are never trimmed. The limits match Redis' defaults: at most `maxArrayLen` (1M) elements and `maxBulkLen` (512MB) per bulk string. Declared lengths never preallocate more than `maxPrealloc` before the data arrives. `FuzzParse` (no panics in `Parse` + `Invoke`) and `FuzzReadArrayRoundTrip` (encoded args parse back unchanged) in `resp/commands/commands_test.go` cover it; run `make fuzz` after you change parsing or add a command.
