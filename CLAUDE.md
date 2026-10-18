@@ -23,7 +23,7 @@ go test ./server -run 'TestServer/should_call_get' -v  # single subtest
 redis-benchmark -t set,get -n 1000000 -q -p 18950      # benchmark a running server
 ```
 
-`server/server_test.go` starts a real server on port 18950 and talks to it with `go-redis`, so tests fail if another `hb` instance is already listening on that port.
+`server/server_test.go` starts real servers on ports 18950 (`TestServer`) and 18951 (`TestStop`) and talks to them with `go-redis`, so tests fail if another `hb` instance is already listening on either port.
 
 ## Configuration
 
@@ -38,6 +38,8 @@ Configuration comes **only from environment variables** (`config/config.go`); th
 ## Architecture
 
 Request flow: `main.go` → `server.Server` accepts TCP connections → each connection gets a `resp.Session` running in its own goroutine → `commands.Parse` reads one RESP array from the stream and builds a `RespCmd` → `cmd.Invoke(session)` returns a `common.RespResult`, which is written to the session's `bufio.Writer`. The writer is flushed only once the reader has no buffered input left, so replies to pipelined commands go out in a single write. Don't write to `conn` directly.
+
+On SIGINT/SIGTERM, `Server.Stop` closes the listener and sets a read deadline on every session's connection. Sessions finish the commands they have already received and then exit. `Start` returns only after every session has ended, so the deferred `CloseAllDbs` in `main` never closes a database that is still in use. A second signal kills the process immediately.
 
 - **`db/`**: package-level registry (`dbs` map, guarded by a mutex) of named BadgerDB instances. `OpenDb(name, inMemory)` is idempotent and returns the cached instance. On-disk databases live at `<DataDirPath>/<name>`. `StartGCRoutine` runs value-log GC on a ticker for non-in-memory databases only. `CloseAllDbs` is deferred in `main`.
 - **`resp/session.go`**: per-connection state (id, current DB, client name). New connections always start on `db0`, and `SELECT n` switches the session to database `db<n>` (0 ≤ n < MaxDbs, opened lazily).

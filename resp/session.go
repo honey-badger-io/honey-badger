@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"runtime/debug"
 
 	"github.com/honey-badger-io/honey-badger/config"
@@ -78,9 +79,9 @@ func (s *Session) Handle() {
 
 		respErr, isRespErr := errors.AsType[common.RespError](err)
 
-		// Any other parse error comes from the connection itself
+		// Any other parse error comes from the connection itself. A deadline means the server is stopping.
 		if err != nil && !isRespErr {
-			if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+			if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, os.ErrDeadlineExceeded) {
 				logger.Server().Error(err)
 			}
 			return

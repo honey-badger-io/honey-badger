@@ -58,13 +58,22 @@ func TestDeleteByKey(t *testing.T) {
 		const key = "test-key2"
 		db.Set(key, []byte{1, 2, 3}, 0)
 
-		if err := db.DeleteByKey(key); err != nil {
+		deleted, err := db.DeleteByKey(key)
+		if err != nil {
 			panic(err)
 		}
 
 		_, hit, err := db.Get(key)
 
+		assert.True(t, deleted)
 		assert.False(t, hit)
+		assert.Nil(t, err)
+	})
+
+	t.Run("should report missing key as not deleted", func(t *testing.T) {
+		deleted, err := db.DeleteByKey("delete-missing-key")
+
+		assert.False(t, deleted)
 		assert.Nil(t, err)
 	})
 }

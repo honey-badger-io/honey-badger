@@ -3,7 +3,10 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/honey-badger-io/honey-badger/config"
 	"github.com/honey-badger-io/honey-badger/db"
@@ -44,6 +47,17 @@ func TestServer(t *testing.T) {
 		err := conn.Del(ctx, key).Err()
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
+	})
+
+	t.Run("should count only deleted keys", func(t *testing.T) {
+		conn.Set(ctx, "del-1", "a", 0)
+		conn.Set(ctx, "del-2", "b", 0)
+
+		count, err := conn.Del(ctx, "del-1", "del-missing", "del-2", "del-1").Result()
+
+		assert.Nil(t, err, fmt.Sprintf("%v", err))
+		assert.Equal(t, int64(2), count)
+		assert.Equal(t, int64(0), conn.Exists(ctx, "del-1", "del-2").Val())
 	})
 
 	t.Run("should call select", func(t *testing.T) {
@@ -93,6 +107,61 @@ func TestServer(t *testing.T) {
 
 		assert.Nil(t, err, fmt.Sprintf("%v", err))
 		assert.Equal(t, connectionName, val)
+	})
+}
+
+func TestStop(t *testing.T) {
+	var ctx = context.Background()
+	config.SetDefault()
+	cfg := *config.Get()
+	cfg.Server.Port = 18951
+	addr := fmt.Sprintf("localhost:%d", cfg.Server.Port)
+
+	server := New(&cfg, "0.0.0")
+	stopped := make(chan error, 1)
+	go func() { stopped <- server.Start() }()
+
+	client := redis.NewClient(&redis.Options{Addr: addr})
+	defer client.Close()
+
+	for client.Ping(ctx).Err() != nil {
+	}
+
+	// A session blocked waiting for its next command
+	idle, err := net.Dial("tcp", addr)
+	if err != nil {
+		panic(err)
+	}
+	defer idle.Close()
+
+	reply := make([]byte, 7)
+	_, _ = idle.Write([]byte("*1\r\n$4\r\nPING\r\n"))
+	if _, err := io.ReadFull(idle, reply); err != nil {
+		panic(err)
+	}
+
+	server.Stop()
+
+	t.Run("should close idle sessions", func(t *testing.T) {
+		_ = idle.SetReadDeadline(time.Now().Add(2 * time.Second))
+		_, err := idle.Read(reply)
+
+		assert.ErrorIs(t, err, io.EOF)
+	})
+
+	t.Run("should return from Start once sessions have ended", func(t *testing.T) {
+		select {
+		case err := <-stopped:
+			assert.Nil(t, err)
+		case <-time.After(2 * time.Second):
+			t.Fatal("Start did not return")
+		}
+	})
+
+	t.Run("should refuse new connections", func(t *testing.T) {
+		_, err := net.Dial("tcp", addr)
+
+		assert.NotNil(t, err)
 	})
 }
 
