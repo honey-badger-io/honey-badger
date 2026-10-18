@@ -17,14 +17,17 @@ func (cmd *delCmd) Invoke(session common.Session) (common.RespResult, error) {
 		return common.ResultNull, common.NewRespErrorf("wrong number of arguments for 'del' command")
 	}
 
-	// Delete each key and count successful deletions
+	// Count only the keys that existed, like Redis
 	deletedCount := 0
 	for _, key := range cmd.args {
-		if err := session.Db().DeleteByKey(key); err != nil {
-			// Log error but continue with other keys
-			continue
+		deleted, err := session.Db().DeleteByKey(key)
+		if err != nil {
+			return common.ResultNull, err
 		}
-		deletedCount++
+
+		if deleted {
+			deletedCount++
+		}
 	}
 
 	return common.NewResultInteger(deletedCount), nil

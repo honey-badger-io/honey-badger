@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -44,14 +45,16 @@ func NewResultMap(data map[string]any) RespResult {
 	return RespResult(result.String())
 }
 
+// The serializers use concatenation rather than fmt, so each reply is built with a single allocation
+
 func serializeBulkString(data string) string {
-	return fmt.Sprintf("$%d\r\n%s\r\n", len(data), data)
+	return "$" + strconv.Itoa(len(data)) + "\r\n" + data + "\r\n"
 }
 
 func serializeString(data string) string {
-	return fmt.Sprintf("+%s\r\n", data)
+	return "+" + data + "\r\n"
 }
 
 func serializeInt(data int) string {
-	return fmt.Sprintf(":%d\r\n", data)
+	return ":" + strconv.Itoa(data) + "\r\n"
 }

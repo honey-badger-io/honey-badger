@@ -1,6 +1,7 @@
 package db
 
 import (
+	"maps"
 	"path"
 	"sync"
 	"time"
@@ -57,12 +58,18 @@ func CloseAllDbs() {
 		logger.Badger().Infof("GC ticker closed")
 	}
 
+	mux.Lock()
+	defer mux.Unlock()
+
 	for name, db := range dbs {
 		logger.Badger().Infof("Closing database '%s'", name)
 		if err := db.b.Close(); err != nil {
 			logger.Badger().Error(err)
 		}
 	}
+
+	// So a later OpenDb opens a fresh database instead of returning a closed one
+	clear(dbs)
 }
 
 func StartGCRoutine() {
@@ -75,18 +82,27 @@ func StartGCRoutine() {
 
 	go func() {
 		for range gcTicker.C {
-			for name, itm := range dbs {
-				// Do not run GC on in memory databases
-				if itm.b.Opts().InMemory {
-					continue
-				}
-
-				logger.Badger().Infof("Running GC on database '%s'...", name)
-				err := itm.b.RunValueLogGC(0.5)
-				if err != nil {
-					logger.Badger().Warning(err)
-				}
-			}
+			runGC()
 		}
 	}()
+}
+
+func runGC() {
+	// Iterate a copy, so OpenDb isn't blocked while GC runs
+	mux.Lock()
+	snapshot := maps.Clone(dbs)
+	mux.Unlock()
+
+	for name, itm := range snapshot {
+		// Do not run GC on in memory databases
+		if itm.b.Opts().InMemory {
+			continue
+		}
+
+		logger.Badger().Infof("Running GC on database '%s'...", name)
+		err := itm.b.RunValueLogGC(0.5)
+		if err != nil {
+			logger.Badger().Warning(err)
+		}
+	}
 }

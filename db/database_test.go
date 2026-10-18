@@ -1,6 +1,8 @@
 package db
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,13 +58,22 @@ func TestDeleteByKey(t *testing.T) {
 		const key = "test-key2"
 		db.Set(key, []byte{1, 2, 3}, 0)
 
-		if err := db.DeleteByKey(key); err != nil {
+		deleted, err := db.DeleteByKey(key)
+		if err != nil {
 			panic(err)
 		}
 
 		_, hit, err := db.Get(key)
 
+		assert.True(t, deleted)
 		assert.False(t, hit)
+		assert.Nil(t, err)
+	})
+
+	t.Run("should report missing key as not deleted", func(t *testing.T) {
+		deleted, err := db.DeleteByKey("delete-missing-key")
+
+		assert.False(t, deleted)
 		assert.Nil(t, err)
 	})
 }
@@ -100,4 +111,25 @@ func getDb() *Database {
 	}
 
 	return db0
+}
+
+func TestRegistryConcurrency(t *testing.T) {
+	t.Run("should run GC while databases are being opened", func(t *testing.T) {
+		var wg sync.WaitGroup
+
+		wg.Go(func() {
+			for i := range 50 {
+				if _, err := OpenDb(fmt.Sprintf("race-%d", i), true); err != nil {
+					panic(err)
+				}
+			}
+		})
+		wg.Go(func() {
+			for range 500 {
+				runGC()
+			}
+		})
+
+		wg.Wait()
+	})
 }

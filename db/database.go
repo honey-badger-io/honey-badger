@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -94,10 +95,31 @@ func (db *Database) Sync() error {
 	return db.b.Sync()
 }
 
-func (db *Database) DeleteByKey(key string) error {
-	return db.b.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(key))
-	})
+// DeleteByKey deletes the key and reports whether it existed
+func (db *Database) DeleteByKey(key string) (bool, error) {
+	for {
+		deleted := false
+		err := db.b.Update(func(txn *badger.Txn) error {
+			_, err := txn.Get([]byte(key))
+			if errors.Is(err, badger.ErrKeyNotFound) {
+				return nil
+			}
+
+			if err != nil {
+				return err
+			}
+
+			deleted = true
+			return txn.Delete([]byte(key))
+		})
+
+		// The key was written after we read it, so read it again
+		if errors.Is(err, badger.ErrConflict) {
+			continue
+		}
+
+		return deleted, err
+	}
 }
 
 func (db *Database) DeleteByPrefix(prefix string) error {

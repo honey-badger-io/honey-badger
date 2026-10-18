@@ -67,7 +67,7 @@ func Init() error {
 	// Create data dir if not exists
 	_, err := os.Stat(envConfig.Badger.DataDirPath)
 	if errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(envConfig.Badger.DataDirPath, os.ModeDir); err != nil {
+		if err := os.MkdirAll(envConfig.Badger.DataDirPath, 0o750); err != nil {
 			return err
 		}
 	}
