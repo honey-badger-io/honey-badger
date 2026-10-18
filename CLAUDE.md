@@ -64,3 +64,9 @@ On SIGINT/SIGTERM, `Server.Stop` closes the listener and sets a read deadline on
 ### Parser
 
 `commands.Parse` only accepts RESP arrays of bulk strings (no inline commands). It reads exactly `$<len>` bytes for each bulk string, so keys and values may hold any binary data, including `\r\n`, and they are never trimmed. The limits match Redis' defaults: at most `maxArrayLen` (1M) elements and `maxBulkLen` (512MB) per bulk string. Declared lengths never preallocate more than `maxPrealloc` before the data arrives. `FuzzParse` (no panics in `Parse` + `Invoke`) and `FuzzReadArrayRoundTrip` (encoded args parse back unchanged) in `resp/commands/commands_test.go` cover it; run `make fuzz` after you change parsing or add a command.
+
+## CI and release
+
+- `.github/workflows/ci.yml` runs `make build` and `make test` on pushes and PRs to `main`. `release.yml` is run by hand with a semver `version` and expects the tag `v<version>` to exist already. It creates a draft GitHub release with the linux/amd64 binary and pushes `meeron/honey-badger:<version>` and `:latest` for amd64 and arm64.
+- Actions are pinned to commit SHAs, with the release tag in a trailing comment. When bumping one, update both. Workflow inputs reach shell steps only through `env:`, never as `${{ }}` inside `run:`.
+- The Docker image runs as the non-root user `hb` (uid/gid 10001). A host directory mounted at `/var/hb/data` must be writable by that uid. `.dockerignore` is an allowlist (`go.mod`, `go.sum`, `*.go`), so a build that needs other files must add them there.

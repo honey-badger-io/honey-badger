@@ -2,7 +2,7 @@
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
 name: Release
-run-name: 'v${{ github.event.inputs.version }}'
+run-name: 'v${{ inputs.version }}'
 
 on:
   workflow_dispatch:
@@ -12,57 +12,80 @@ on:
         required: true
         type: string
 
+# Jobs get only the permissions they ask for
+permissions: {}
+
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    # The version ends up in tags, file names and shell commands, so only allow semver
+    - name: Validate version
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          echo "::error::version must look like 1.2.3 or 1.2.3-rc.1, got '$VERSION'"
+          exit 1
+        fi
+
   build-amd64:
     runs-on: ubuntu-latest
+    needs: validate
     permissions:
       contents: write
+    env:
+      VERSION: ${{ inputs.version }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        ref: 'v${{ github.event.inputs.version }}'
+        ref: 'v${{ inputs.version }}'
+        persist-credentials: false
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version: '1.27'
     - name: Build
-      run: make build ver='${{ github.event.inputs.version }}'
+      run: make build ver="$VERSION"
     - name: Test
       run: make test
     - name: Tar Archive
-      run: tar -zcvf hb-linux-amd64-${{ github.event.inputs.version }}.tar.gz bin
+      run: tar -zcvf "hb-linux-amd64-$VERSION.tar.gz" bin
 
     - name: Create Release
-      uses: ncipollo/release-action@v1.13.0
+      uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
       with:
-        tag: 'v${{ github.event.inputs.version }}'
+        tag: 'v${{ inputs.version }}'
         draft: true
         prerelease: true
-        artifacts: "hb-linux-amd64-${{ github.event.inputs.version }}.tar.gz"
+        artifacts: 'hb-linux-amd64-${{ inputs.version }}.tar.gz'
 
   docker:
     runs-on: ubuntu-latest
     needs: build-amd64
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        ref: 'v${{ github.event.inputs.version }}'
+        ref: 'v${{ inputs.version }}'
+        persist-credentials: false
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
     - name: Login to Docker Hub
-      uses: docker/login-action@v3
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Build and push Docker images
-      uses: docker/build-push-action@v5.0.0
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
         platforms: linux/amd64,linux/arm64
         context: .
         push: true
-        tags: meeron/honey-badger:latest,meeron/honey-badger:${{ github.event.inputs.version }}
+        tags: meeron/honey-badger:latest,meeron/honey-badger:${{ inputs.version }}
         build-args: |
-          ver:${{ github.event.inputs.version }}
+          ver=${{ inputs.version }}
